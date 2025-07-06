@@ -3,7 +3,8 @@ import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Session storage table for Replit Auth
+// Session storage table.
+// (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
 export const sessions = pgTable(
   "sessions",
   {
@@ -11,26 +12,27 @@ export const sessions = pgTable(
     sess: jsonb("sess").notNull(),
     expire: timestamp("expire").notNull(),
   },
-  (table) => [index("IDX_session_expire").on(table.expire)],
+  (table) => [index("IDX_session_expire").on(table.expire)]
 );
 
-// User storage table for Replit Auth
+// User storage table.
+// (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().notNull(),
+  role: varchar("role").notNull().default("user"),
   email: varchar("email").unique(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
-  role: varchar("role").notNull().default("viewer"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Devotees table
+// Devotee storage table  
 export const devotees = pgTable("devotees", {
   id: serial("id").primaryKey(),
-  devoteeId: varchar("devotee_id").notNull().unique(),
+  devoteeId: varchar("devotee_id").unique().notNull(),
   firstName: varchar("first_name").notNull(),
   lastName: varchar("last_name").notNull(),
   email: varchar("email").unique(),
@@ -41,202 +43,223 @@ export const devotees = pgTable("devotees", {
   address: text("address"),
   city: varchar("city"),
   state: varchar("state"),
-  country: varchar("country").default("India"),
   pincode: varchar("pincode"),
+  country: varchar("country"),
   occupation: varchar("occupation"),
-  profileImageUrl: varchar("profile_image_url"),
-  emergencyContact: varchar("emergency_contact"),
-  emergencyContactNumber: varchar("emergency_contact_number"),
-  bloodGroup: varchar("blood_group"),
   spiritualLevel: varchar("spiritual_level"),
-  joinDate: timestamp("join_date").defaultNow(),
-  mentorId: integer("mentor_id").references(() => mentors.id),
-  familyId: integer("family_id").references(() => families.id),
-  isActive: boolean("is_active").notNull().default(true),
-  qrCodeData: text("qr_code_data"),
+  joinDate: timestamp("join_date"),
+  mentorId: integer("mentor_id"),
+  familyId: integer("family_id"),
+  profileImage: varchar("profile_image"),
   notes: text("notes"),
+  specialSkills: text("special_skills"),
+  previousExperience: text("previous_experience"),
+  emergencyContact: varchar("emergency_contact"),
+  emergencyPhone: varchar("emergency_phone"),
+  medicalConditions: text("medical_conditions"),
+  dietaryPreferences: text("dietary_preferences"),
+  isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Families table
+// Family storage table
 export const families = pgTable("families", {
   id: serial("id").primaryKey(),
   familyName: varchar("family_name").notNull(),
-  headOfFamily: varchar("head_of_family").notNull(),
+  headOfFamily: integer("head_of_family"),
   address: text("address"),
   city: varchar("city"),
   state: varchar("state"),
-  country: varchar("country").default("India"),
   pincode: varchar("pincode"),
-  totalMembers: integer("total_members").default(0),
-  joinDate: timestamp("join_date").defaultNow(),
-  isActive: boolean("is_active").notNull().default(true),
+  country: varchar("country"),
+  phone: varchar("phone"),
+  email: varchar("email"),
+  totalMembers: integer("total_members"),
+  emergencyContact: varchar("emergency_contact"),
   notes: text("notes"),
+  isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Mentors table
+// Mentor storage table
 export const mentors = pgTable("mentors", {
   id: serial("id").primaryKey(),
-  firstName: varchar("first_name").notNull(),
-  lastName: varchar("last_name").notNull(),
-  email: varchar("email").unique(),
-  phone: varchar("phone"),
+  devoteeId: integer("devotee_id").notNull(),
   specialization: varchar("specialization"),
-  experience: integer("experience"),
-  maxDevotees: integer("max_devotees").default(20),
-  currentDevotees: integer("current_devotees").default(0),
+  experience: text("experience"),
+  qualifications: text("qualifications"),
+  availableHours: varchar("available_hours"),
+  contactPreference: varchar("contact_preference"),
+  maxMentees: integer("max_mentees"),
+  currentMentees: integer("current_mentees"),
   isActive: boolean("is_active").notNull().default(true),
-  notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Attendance table
-export const attendance = pgTable("attendance", {
-  id: serial("id").primaryKey(),
-  devoteeId: integer("devotee_id").references(() => devotees.id).notNull(),
-  eventId: integer("event_id").references(() => events.id),
-  date: timestamp("date").notNull(),
-  status: varchar("status").notNull(), // present, absent, late, excused
-  notes: text("notes"),
-  recordedBy: varchar("recorded_by").references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-// Donations table
-export const donations = pgTable("donations", {
-  id: serial("id").primaryKey(),
-  devoteeId: integer("devotee_id").references(() => devotees.id).notNull(),
-  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
-  donationType: varchar("donation_type").notNull(), // cash, online, cheque, kind
-  purpose: varchar("purpose"),
-  paymentMethod: varchar("payment_method"),
-  transactionId: varchar("transaction_id"),
-  receiptNumber: varchar("receipt_number"),
-  date: timestamp("date").notNull(),
-  notes: text("notes"),
-  isAnonymous: boolean("is_anonymous").default(false),
-  taxExemptible: boolean("tax_exemptible").default(false),
-  recordedBy: varchar("recorded_by").references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-// Events table
+// Events storage table
 export const events = pgTable("events", {
   id: serial("id").primaryKey(),
   title: varchar("title").notNull(),
   description: text("description"),
-  eventType: varchar("event_type").notNull(), // satsang, festival, workshop, meeting
+  eventType: varchar("event_type").notNull(),
+  location: varchar("location"),
   startDate: timestamp("start_date").notNull(),
-  endDate: timestamp("end_date").notNull(),
-  location: text("location"),
-  maxParticipants: integer("max_participants"),
+  endDate: timestamp("end_date"),
+  startTime: varchar("start_time"),
+  endTime: varchar("end_time"),
+  capacity: integer("capacity"),
   registrationRequired: boolean("registration_required").default(false),
+  registrationDeadline: timestamp("registration_deadline"),
+  cost: decimal("cost", { precision: 10, scale: 2 }),
+  status: varchar("status").notNull().default("planned"),
+  createdBy: varchar("created_by"),
   isActive: boolean("is_active").notNull().default(true),
-  organizerId: varchar("organizer_id").references(() => users.id),
-  notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Event participation table
+// Attendance storage table
+export const attendance = pgTable("attendance", {
+  id: serial("id").primaryKey(),
+  devoteeId: integer("devotee_id").notNull(),
+  eventId: integer("event_id").notNull(),
+  attendanceDate: timestamp("attendance_date").notNull(),
+  checkInTime: timestamp("check_in_time"),
+  checkOutTime: timestamp("check_out_time"),
+  status: varchar("status").notNull().default("present"),
+  notes: text("notes"),
+  recordedBy: varchar("recorded_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Donations storage table
+export const donations = pgTable("donations", {
+  id: serial("id").primaryKey(),
+  devoteeId: integer("devotee_id").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency").notNull().default("INR"),
+  donationType: varchar("donation_type").notNull(),
+  purpose: text("purpose"),
+  donationDate: timestamp("donation_date").notNull(),
+  paymentMethod: varchar("payment_method"),
+  transactionId: varchar("transaction_id"),
+  receiptNumber: varchar("receipt_number"),
+  taxDeductible: boolean("tax_deductible").default(false),
+  anonymousDonation: boolean("anonymous_donation").default(false),
+  notes: text("notes"),
+  recordedBy: varchar("recorded_by"),
+  status: varchar("status").notNull().default("received"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Event Participation storage table
 export const eventParticipation = pgTable("event_participation", {
   id: serial("id").primaryKey(),
-  eventId: integer("event_id").references(() => events.id).notNull(),
-  devoteeId: integer("devotee_id").references(() => devotees.id).notNull(),
-  registrationDate: timestamp("registration_date").defaultNow(),
-  participationStatus: varchar("participation_status").default("registered"), // registered, attended, missed
-  feedback: text("feedback"),
-  rating: integer("rating"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-// Volunteering table
-export const volunteering = pgTable("volunteering", {
-  id: serial("id").primaryKey(),
-  devoteeId: integer("devotee_id").references(() => devotees.id).notNull(),
-  eventId: integer("event_id").references(() => events.id),
-  activityType: varchar("activity_type").notNull(), // seva, decoration, cooking, management
-  hours: decimal("hours", { precision: 4, scale: 2 }).notNull(),
-  date: timestamp("date").notNull(),
-  description: text("description"),
-  supervisorId: integer("supervisor_id").references(() => mentors.id),
+  eventId: integer("event_id").notNull(),
+  devoteeId: integer("devotee_id").notNull(),
+  registrationDate: timestamp("registration_date"),
+  status: varchar("status").notNull().default("registered"),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Groups table
+// Volunteering storage table
+export const volunteering = pgTable("volunteering", {
+  id: serial("id").primaryKey(),
+  devoteeId: integer("devotee_id").notNull(),
+  activityType: varchar("activity_type").notNull(),
+  description: text("description"),
+  location: varchar("location"),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date"),
+  hoursCommitted: integer("hours_committed"),
+  hoursCompleted: integer("hours_completed"),
+  skills: text("skills"),
+  status: varchar("status").notNull().default("active"),
+  supervisorId: integer("supervisor_id"),
+  feedback: text("feedback"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Groups storage table
 export const groups = pgTable("groups", {
   id: serial("id").primaryKey(),
-  name: varchar("name").notNull(),
+  groupName: varchar("group_name").notNull(),
   description: text("description"),
-  groupType: varchar("group_type").notNull(), // bhajan, satsang, seva, study
-  location: varchar("location"),
-  maxMembers: integer("max_members"),
+  groupType: varchar("group_type").notNull(),
+  capacity: integer("capacity"),
   currentMembers: integer("current_members").default(0),
-  leaderId: integer("leader_id").references(() => devotees.id),
-  meetingSchedule: text("meeting_schedule"),
-  whatsappLink: varchar("whatsapp_link"),
-  telegramLink: varchar("telegram_link"),
+  location: varchar("location"),
+  meetingSchedule: varchar("meeting_schedule"),
+  leaderId: integer("leader_id"),
+  requirements: text("requirements"),
+  createdBy: varchar("created_by"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Group memberships table
+// Group Memberships storage table
 export const groupMemberships = pgTable("group_memberships", {
   id: serial("id").primaryKey(),
-  groupId: integer("group_id").references(() => groups.id).notNull(),
-  devoteeId: integer("devotee_id").references(() => devotees.id).notNull(),
-  joinDate: timestamp("join_date").defaultNow(),
-  role: varchar("role").default("member"), // member, coordinator, assistant
-  isActive: boolean("is_active").notNull().default(true),
+  groupId: integer("group_id").notNull(),
+  devoteeId: integer("devotee_id").notNull(),
+  role: varchar("role").notNull().default("member"),
+  joinDate: timestamp("join_date"),
+  status: varchar("status").notNull().default("active"),
+  notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Dashboard layouts table
+// Dashboard Layouts storage table
 export const dashboardLayouts = pgTable("dashboard_layouts", {
   id: serial("id").primaryKey(),
-  userId: varchar("user_id").references(() => users.id).notNull(),
-  name: varchar("name").notNull(),
-  layout: jsonb("layout").notNull(),
+  userId: varchar("user_id").notNull(),
+  layoutName: varchar("layout_name").notNull(),
+  layoutData: text("layout_data").notNull(),
   isDefault: boolean("is_default").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// User preferences table
+// User Preferences storage table
 export const userPreferences = pgTable("user_preferences", {
   id: serial("id").primaryKey(),
-  userId: varchar("user_id").references(() => users.id).notNull().unique(),
+  userId: varchar("user_id").notNull(),
   theme: varchar("theme").default("devotional"),
+  dashboardLayout: varchar("dashboard_layout"),
+  notifications: text("notifications"),
   language: varchar("language").default("en"),
-  notifications: jsonb("notifications").default({}),
-  dashboardLayout: integer("dashboard_layout").references(() => dashboardLayouts.id),
-  preferences: jsonb("preferences").default({}),
+  timezone: varchar("timezone"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Relations
 export const usersRelations = relations(users, ({ many, one }) => ({
-  preferences: one(userPreferences),
+  preferences: one(userPreferences, {
+    fields: [users.id],
+    references: [userPreferences.userId],
+  }),
   dashboardLayouts: many(dashboardLayouts),
-  organizedEvents: many(events),
 }));
 
 export const devoteesRelations = relations(devotees, ({ one, many }) => ({
-  mentor: one(mentors, { fields: [devotees.mentorId], references: [mentors.id] }),
-  family: one(families, { fields: [devotees.familyId], references: [families.id] }),
+  family: one(families, {
+    fields: [devotees.familyId],
+    references: [families.id],
+  }),
+  mentor: one(mentors, {
+    fields: [devotees.mentorId],
+    references: [mentors.id],
+  }),
   attendance: many(attendance),
   donations: many(donations),
-  eventParticipation: many(eventParticipation),
   volunteering: many(volunteering),
   groupMemberships: many(groupMemberships),
-  ledGroups: many(groups),
 }));
 
 export const familiesRelations = relations(families, ({ many }) => ({
@@ -244,64 +267,91 @@ export const familiesRelations = relations(families, ({ many }) => ({
 }));
 
 export const mentorsRelations = relations(mentors, ({ many }) => ({
-  devotees: many(devotees),
-  supervisedVolunteering: many(volunteering),
+  mentees: many(devotees),
 }));
 
 export const attendanceRelations = relations(attendance, ({ one }) => ({
-  devotee: one(devotees, { fields: [attendance.devoteeId], references: [devotees.id] }),
-  event: one(events, { fields: [attendance.eventId], references: [events.id] }),
+  devotee: one(devotees, {
+    fields: [attendance.devoteeId],
+    references: [devotees.id],
+  }),
+  event: one(events, {
+    fields: [attendance.eventId],
+    references: [events.id],
+  }),
 }));
 
 export const donationsRelations = relations(donations, ({ one }) => ({
-  devotee: one(devotees, { fields: [donations.devoteeId], references: [devotees.id] }),
+  devotee: one(devotees, {
+    fields: [donations.devoteeId],
+    references: [devotees.id],
+  }),
 }));
 
 export const eventsRelations = relations(events, ({ one, many }) => ({
-  organizer: one(users, { fields: [events.organizerId], references: [users.id] }),
   attendance: many(attendance),
-  participation: many(eventParticipation),
-  volunteering: many(volunteering),
+  eventParticipation: many(eventParticipation),
 }));
 
 export const eventParticipationRelations = relations(eventParticipation, ({ one }) => ({
-  event: one(events, { fields: [eventParticipation.eventId], references: [events.id] }),
-  devotee: one(devotees, { fields: [eventParticipation.devoteeId], references: [devotees.id] }),
+  event: one(events, {
+    fields: [eventParticipation.eventId],
+    references: [events.id],
+  }),
+  devotee: one(devotees, {
+    fields: [eventParticipation.devoteeId],
+    references: [devotees.id],
+  }),
 }));
 
 export const volunteeringRelations = relations(volunteering, ({ one }) => ({
-  devotee: one(devotees, { fields: [volunteering.devoteeId], references: [devotees.id] }),
-  event: one(events, { fields: [volunteering.eventId], references: [events.id] }),
-  supervisor: one(mentors, { fields: [volunteering.supervisorId], references: [mentors.id] }),
+  devotee: one(devotees, {
+    fields: [volunteering.devoteeId],
+    references: [devotees.id],
+  }),
 }));
 
 export const groupsRelations = relations(groups, ({ one, many }) => ({
-  leader: one(devotees, { fields: [groups.leaderId], references: [devotees.id] }),
+  leader: one(devotees, {
+    fields: [groups.leaderId],
+    references: [devotees.id],
+  }),
   memberships: many(groupMemberships),
 }));
 
 export const groupMembershipsRelations = relations(groupMemberships, ({ one }) => ({
-  group: one(groups, { fields: [groupMemberships.groupId], references: [groups.id] }),
-  devotee: one(devotees, { fields: [groupMemberships.devoteeId], references: [devotees.id] }),
+  group: one(groups, {
+    fields: [groupMemberships.groupId],
+    references: [groups.id],
+  }),
+  devotee: one(devotees, {
+    fields: [groupMemberships.devoteeId],
+    references: [devotees.id],
+  }),
 }));
 
 export const dashboardLayoutsRelations = relations(dashboardLayouts, ({ one }) => ({
-  user: one(users, { fields: [dashboardLayouts.userId], references: [users.id] }),
+  user: one(users, {
+    fields: [dashboardLayouts.userId],
+    references: [users.id],
+  }),
 }));
 
 export const userPreferencesRelations = relations(userPreferences, ({ one }) => ({
-  user: one(users, { fields: [userPreferences.userId], references: [users.id] }),
-  dashboardLayout: one(dashboardLayouts, { fields: [userPreferences.dashboardLayout], references: [dashboardLayouts.id] }),
+  user: one(users, {
+    fields: [userPreferences.userId],
+    references: [users.id],
+  }),
 }));
 
-// Insert schemas
+// Zod schemas for validation
 export const insertUserSchema = createInsertSchema(users).pick({
+  id: true,
   email: true,
   firstName: true,
   lastName: true,
   profileImageUrl: true,
   role: true,
-  isActive: true,
 });
 
 export const insertDevoteeSchema = createInsertSchema(devotees).omit({
@@ -364,23 +414,33 @@ export const insertUserPreferencesSchema = createInsertSchema(userPreferences).o
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+
 export type InsertDevotee = z.infer<typeof insertDevoteeSchema>;
 export type Devotee = typeof devotees.$inferSelect;
+
 export type InsertFamily = z.infer<typeof insertFamilySchema>;
 export type Family = typeof families.$inferSelect;
+
 export type InsertMentor = z.infer<typeof insertMentorSchema>;
 export type Mentor = typeof mentors.$inferSelect;
+
 export type InsertAttendance = z.infer<typeof insertAttendanceSchema>;
 export type Attendance = typeof attendance.$inferSelect;
+
 export type InsertDonation = z.infer<typeof insertDonationSchema>;
 export type Donation = typeof donations.$inferSelect;
+
 export type InsertEvent = z.infer<typeof insertEventSchema>;
 export type Event = typeof events.$inferSelect;
+
 export type InsertVolunteering = z.infer<typeof insertVolunteeringSchema>;
 export type Volunteering = typeof volunteering.$inferSelect;
+
 export type InsertGroup = z.infer<typeof insertGroupSchema>;
 export type Group = typeof groups.$inferSelect;
+
 export type InsertDashboardLayout = z.infer<typeof insertDashboardLayoutSchema>;
 export type DashboardLayout = typeof dashboardLayouts.$inferSelect;
+
 export type InsertUserPreferences = z.infer<typeof insertUserPreferencesSchema>;
 export type UserPreferences = typeof userPreferences.$inferSelect;

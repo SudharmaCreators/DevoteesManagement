@@ -1,7 +1,18 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+// import { setupAuth, isAuthenticated } from "./replitAuth";
+
+// Mock authentication for development
+const isAuthenticated = (req: any, res: any, next: any) => {
+  // Mock user data for development
+  req.user = {
+    claims: {
+      sub: 'dev-user-1'
+    }
+  };
+  next();
+};
 import { 
   insertDevoteeSchema, 
   insertFamilySchema, 
@@ -17,6 +28,9 @@ import {
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Auth middleware - temporarily disabled for development
+  // await setupAuth(app);
+
   // Temporary mock auth for development
   app.get('/api/auth/user', async (req: any, res) => {
     try {
@@ -27,6 +41,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstName: 'Dev',
         lastName: 'User',
         profileImageUrl: null,
+        role: 'admin',
+        isActive: true,
         createdAt: new Date(),
         updatedAt: new Date()
       };
@@ -37,8 +53,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Devotee routes
-  app.get('/api/devotees', isAuthenticated, async (req, res) => {
+  // Devotee routes - temporarily remove auth middleware
+  app.get('/api/devotees', async (req, res) => {
     try {
       const devotees = await storage.getDevotees();
       res.json(devotees);
