@@ -30,7 +30,7 @@ app.use((req, res, next) => {
         logLine = logLine.slice(0, 79) + "…";
       }
 
-      log(logLine);
+      console.log(logLine);
     }
   });
 
@@ -45,7 +45,7 @@ app.use((req, res, next) => {
     try {
       await seedDemoData();
     } catch (error) {
-      log("Demo data already exists or seeding failed:", error.message);
+      console.log("Demo data already exists or seeding failed:", error.message);
     }
   }
 
@@ -75,6 +75,6 @@ app.use((req, res, next) => {
     host: "0.0.0.0",
     reusePort: true,
   }, () => {
-    log(`serving on port ${port}`);
+    console.log(`serving on port ${port}`);
   });
 })();

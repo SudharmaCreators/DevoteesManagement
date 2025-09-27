@@ -1,18 +1,16 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Header } from "@/components/Layout/Header";
-import { ThemeSelector } from "@/components/Common/ThemeSelector";
-import { LoadingSpinner } from "@/components/Common/LoadingSpinner";
+import { EncryptionManager } from "@/components/Admin/EncryptionManager";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { 
   Settings as SettingsIcon, 
@@ -30,7 +28,8 @@ import {
   Globe,
   Moon,
   Sun,
-  Monitor
+  Monitor,
+  Key
 } from "lucide-react";
 
 export default function Settings() {
@@ -94,7 +93,7 @@ export default function Settings() {
         title="Settings" 
         subtitle="Manage your account and system preferences" 
       />
-      
+
       <main className="flex-1 overflow-y-auto p-6">
         <div className="max-w-6xl mx-auto space-y-6">
           {/* Settings Navigation */}
@@ -126,61 +125,81 @@ export default function Settings() {
 
                 {/* Content */}
                 <div className="md:col-span-5 p-6">
-                  {activeTab === "profile" && (
-                    <div className="space-y-6">
-                      <div>
-                        <h3 className="text-lg font-semibold text-foreground mb-4">Profile Information</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor="firstName">First Name</Label>
-                            <Input
-                              id="firstName"
-                              value={user?.firstName || ""}
-                              readOnly
-                              className="bg-muted"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="lastName">Last Name</Label>
-                            <Input
-                              id="lastName"
-                              value={user?.lastName || ""}
-                              readOnly
-                              className="bg-muted"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="email">Email Address</Label>
-                            <Input
-                              id="email"
-                              type="email"
-                              value={user?.email || ""}
-                              readOnly
-                              className="bg-muted"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="role">Role</Label>
-                            <div className="mt-2">
-                              <Badge variant="secondary" className="capitalize">
-                                {user?.role || "User"}
-                              </Badge>
-                            </div>
-                          </div>
-                        </div>
-                        <p className="text-sm text-muted-foreground mt-4">
-                          Profile information is managed through your authentication provider and cannot be edited here.
-                        </p>
-                      </div>
-                    </div>
-                  )}
+                  <Tabs defaultValue="profile" className="space-y-6">
+                    <TabsList className="grid w-full grid-cols-5">
+                      <TabsTrigger value="profile">Profile</TabsTrigger>
+                      <TabsTrigger value="appearance">Appearance</TabsTrigger>
+                      <TabsTrigger value="notifications">Notifications</TabsTrigger>
+                      <TabsTrigger value="security">Security</TabsTrigger>
+                      <TabsTrigger value="encryption">Encryption</TabsTrigger>
+                    </TabsList>
 
-                  {activeTab === "appearance" && (
-                    <div className="space-y-6">
-                      <div>
-                        <h3 className="text-lg font-semibold text-foreground mb-4">Appearance Settings</h3>
-                        
-                        <div className="space-y-6">
+                    <TabsContent value="profile">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center space-x-2">
+                            <User className="w-5 h-5" />
+                            <span>Profile Information</span>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                          <div>
+                            <h3 className="text-lg font-semibold text-foreground mb-4">Profile Information</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <Label htmlFor="firstName">First Name</Label>
+                                <Input
+                                  id="firstName"
+                                  value={user?.firstName || ""}
+                                  readOnly
+                                  className="bg-muted"
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="lastName">Last Name</Label>
+                                <Input
+                                  id="lastName"
+                                  value={user?.lastName || ""}
+                                  readOnly
+                                  className="bg-muted"
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="email">Email Address</Label>
+                                <Input
+                                  id="email"
+                                  type="email"
+                                  value={user?.email || ""}
+                                  readOnly
+                                  className="bg-muted"
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="role">Role</Label>
+                                <div className="mt-2">
+                                  <Badge variant="secondary" className="capitalize">
+                                    {user?.role || "User"}
+                                  </Badge>
+                                </div>
+                              </div>
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-4">
+                              Profile information is managed through your authentication provider and cannot be edited here.
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </TabsContent>
+
+                    <TabsContent value="appearance">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center space-x-2">
+                            <Palette className="w-5 h-5" />
+                            <span>Appearance Settings</span>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
                           <div>
                             <Label className="text-base font-medium">Theme</Label>
                             <p className="text-sm text-muted-foreground mb-3">
@@ -242,75 +261,81 @@ export default function Settings() {
                               </SelectContent>
                             </Select>
                           </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                        </CardContent>
+                      </Card>
+                    </TabsContent>
 
-                  {activeTab === "notifications" && (
-                    <div className="space-y-6">
-                      <div>
-                        <h3 className="text-lg font-semibold text-foreground mb-4">Notification Preferences</h3>
-                        
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <Label className="text-base">Email Notifications</Label>
-                              <p className="text-sm text-muted-foreground">Receive notifications via email</p>
+                    <TabsContent value="notifications">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center space-x-2">
+                            <Bell className="w-5 h-5" />
+                            <span>Notification Preferences</span>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <Label className="text-base">Email Notifications</Label>
+                                <p className="text-sm text-muted-foreground">Receive notifications via email</p>
+                              </div>
+                              <Switch defaultChecked />
                             </div>
-                            <Switch defaultChecked />
-                          </div>
 
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <Label className="text-base">New Devotee Registration</Label>
-                              <p className="text-sm text-muted-foreground">Get notified when new devotees join</p>
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <Label className="text-base">New Devotee Registration</Label>
+                                <p className="text-sm text-muted-foreground">Get notified when new devotees join</p>
+                              </div>
+                              <Switch defaultChecked />
                             </div>
-                            <Switch defaultChecked />
-                          </div>
 
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <Label className="text-base">Event Reminders</Label>
-                              <p className="text-sm text-muted-foreground">Reminders for upcoming events</p>
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <Label className="text-base">Event Reminders</Label>
+                                <p className="text-sm text-muted-foreground">Reminders for upcoming events</p>
+                              </div>
+                              <Switch defaultChecked />
                             </div>
-                            <Switch defaultChecked />
-                          </div>
 
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <Label className="text-base">Donation Alerts</Label>
-                              <p className="text-sm text-muted-foreground">Get notified about new donations</p>
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <Label className="text-base">Donation Alerts</Label>
+                                <p className="text-sm text-muted-foreground">Get notified about new donations</p>
+                              </div>
+                              <Switch />
                             </div>
-                            <Switch />
-                          </div>
 
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <Label className="text-base">Birthday Reminders</Label>
-                              <p className="text-sm text-muted-foreground">Reminders for devotee birthdays</p>
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <Label className="text-base">Birthday Reminders</Label>
+                                <p className="text-sm text-muted-foreground">Reminders for devotee birthdays</p>
+                              </div>
+                              <Switch defaultChecked />
                             </div>
-                            <Switch defaultChecked />
-                          </div>
 
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <Label className="text-base">System Maintenance</Label>
-                              <p className="text-sm text-muted-foreground">Important system updates and maintenance</p>
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <Label className="text-base">System Maintenance</Label>
+                                <p className="text-sm text-muted-foreground">Important system updates and maintenance</p>
+                              </div>
+                              <Switch defaultChecked />
                             </div>
-                            <Switch defaultChecked />
                           </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                        </CardContent>
+                      </Card>
+                    </TabsContent>
 
-                  {activeTab === "security" && (
-                    <div className="space-y-6">
-                      <div>
-                        <h3 className="text-lg font-semibold text-foreground mb-4">Security Settings</h3>
-                        
-                        <div className="space-y-6">
+                    <TabsContent value="security">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center space-x-2">
+                            <Shield className="w-5 h-5" />
+                            <span>Security Settings</span>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
                           <div>
                             <Label className="text-base font-medium">Authentication</Label>
                             <p className="text-sm text-muted-foreground mb-3">
@@ -364,157 +389,14 @@ export default function Settings() {
                               </div>
                             </div>
                           </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                        </CardContent>
+                      </Card>
+                    </TabsContent>
 
-                  {activeTab === "data" && (
-                    <div className="space-y-6">
-                      <div>
-                        <h3 className="text-lg font-semibold text-foreground mb-4">Data Management</h3>
-                        
-                        <div className="space-y-6">
-                          <div>
-                            <Label className="text-base font-medium">Export Data</Label>
-                            <p className="text-sm text-muted-foreground mb-3">
-                              Download your organization's data in various formats
-                            </p>
-                            <div className="flex flex-wrap gap-2">
-                              <Button variant="outline">
-                                <Download className="w-4 h-4 mr-2" />
-                                Export Devotees (CSV)
-                              </Button>
-                              <Button variant="outline">
-                                <Download className="w-4 h-4 mr-2" />
-                                Export Attendance (Excel)
-                              </Button>
-                              <Button variant="outline">
-                                <Download className="w-4 h-4 mr-2" />
-                                Export Donations (PDF)
-                              </Button>
-                            </div>
-                          </div>
-
-                          <Separator />
-
-                          <div>
-                            <Label className="text-base font-medium">Import Data</Label>
-                            <p className="text-sm text-muted-foreground mb-3">
-                              Import data from external sources
-                            </p>
-                            <Button variant="outline">
-                              <Upload className="w-4 h-4 mr-2" />
-                              Import from Excel/CSV
-                            </Button>
-                          </div>
-
-                          <Separator />
-
-                          <div>
-                            <Label className="text-base font-medium">Database Backup</Label>
-                            <p className="text-sm text-muted-foreground mb-3">
-                              Create and manage database backups
-                            </p>
-                            <div className="flex space-x-2">
-                              <Button variant="outline">
-                                <Download className="w-4 h-4 mr-2" />
-                                Create Backup
-                              </Button>
-                              <Button variant="outline">
-                                <RefreshCw className="w-4 h-4 mr-2" />
-                                Restore Backup
-                              </Button>
-                            </div>
-                          </div>
-
-                          <Separator />
-
-                          <div>
-                            <Label className="text-base font-medium text-destructive">Danger Zone</Label>
-                            <p className="text-sm text-muted-foreground mb-3">
-                              Irreversible and destructive actions
-                            </p>
-                            <Button variant="destructive" disabled>
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Delete All Data
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {activeTab === "system" && (
-                    <div className="space-y-6">
-                      <div>
-                        <h3 className="text-lg font-semibold text-foreground mb-4">System Information</h3>
-                        
-                        <div className="space-y-6">
-                          <div>
-                            <Label className="text-base font-medium">Application Info</Label>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-                              <div className="p-3 border border-border rounded-lg">
-                                <p className="font-medium">Version</p>
-                                <p className="text-sm text-muted-foreground">1.0.0</p>
-                              </div>
-                              <div className="p-3 border border-border rounded-lg">
-                                <p className="font-medium">Environment</p>
-                                <p className="text-sm text-muted-foreground">Production</p>
-                              </div>
-                              <div className="p-3 border border-border rounded-lg">
-                                <p className="font-medium">Database</p>
-                                <p className="text-sm text-muted-foreground">PostgreSQL</p>
-                              </div>
-                              <div className="p-3 border border-border rounded-lg">
-                                <p className="font-medium">Hosting</p>
-                                <p className="text-sm text-muted-foreground">Replit</p>
-                              </div>
-                            </div>
-                          </div>
-
-                          <Separator />
-
-                          <div>
-                            <Label className="text-base font-medium">Performance</Label>
-                            <div className="space-y-3 mt-3">
-                              <div className="flex items-center justify-between">
-                                <span>Database Status</span>
-                                <Badge className="bg-green-100 text-green-800">Connected</Badge>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span>API Response Time</span>
-                                <span className="text-sm text-muted-foreground">~150ms</span>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span>Uptime</span>
-                                <span className="text-sm text-muted-foreground">99.9%</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          <Separator />
-
-                          <div>
-                            <Label className="text-base font-medium">Support</Label>
-                            <p className="text-sm text-muted-foreground mb-3">
-                              Get help and report issues
-                            </p>
-                            <div className="flex space-x-2">
-                              <Button variant="outline">
-                                <Globe className="w-4 h-4 mr-2" />
-                                Documentation
-                              </Button>
-                              <Button variant="outline">
-                                <Bell className="w-4 h-4 mr-2" />
-                                Report Issue
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                    <TabsContent value="encryption">
+                      <EncryptionManager />
+                    </TabsContent>
+                  </Tabs>
 
                   {/* Save Button */}
                   <div className="flex justify-end pt-6 border-t border-border">

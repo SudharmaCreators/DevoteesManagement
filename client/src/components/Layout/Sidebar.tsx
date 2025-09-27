@@ -44,11 +44,11 @@ export function Sidebar() {
   const getNavItemClass = (href: string) => {
     const isActive = location === href;
     const baseClasses = "flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200";
-    
+
     if (isActive) {
       return `${baseClasses} bg-primary/10 text-primary font-medium`;
     }
-    
+
     return `${baseClasses} text-muted-foreground hover:bg-muted hover:text-foreground`;
   };
 

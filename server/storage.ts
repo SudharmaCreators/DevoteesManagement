@@ -260,7 +260,7 @@ export class DatabaseStorage implements IStorage {
       query = query.where(eq(attendance.eventId, eventId));
     }
     
-    return await query.orderBy(desc(attendance.date));
+    return await query.orderBy(desc(attendance.attendanceDate));
   }
 
   async createAttendance(attendanceData: InsertAttendance): Promise<Attendance> {
@@ -290,7 +290,7 @@ export class DatabaseStorage implements IStorage {
       query = query.where(eq(donations.devoteeId, devoteeId));
     }
     
-    return await query.orderBy(desc(donations.date));
+    return await query.orderBy(desc(donations.donationDate));
   }
 
   async createDonation(donation: InsertDonation): Promise<Donation> {
@@ -349,7 +349,7 @@ export class DatabaseStorage implements IStorage {
       query = query.where(eq(volunteering.devoteeId, devoteeId));
     }
     
-    return await query.orderBy(desc(volunteering.date));
+    return await query.orderBy(desc(volunteering.startDate));
   }
 
   async createVolunteering(volunteeringData: InsertVolunteering): Promise<Volunteering> {
