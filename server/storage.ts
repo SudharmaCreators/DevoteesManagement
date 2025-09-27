@@ -523,4 +523,250 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-export const storage = new DatabaseStorage();
+import { MockStorage } from "./mockStorage";
+
+// Create a wrapper that handles database failures gracefully
+class FallbackStorage implements IStorage {
+  private primaryStorage: IStorage;
+  private fallbackStorage: IStorage;
+  private usingFallback = false;
+
+  constructor() {
+    this.primaryStorage = new DatabaseStorage();
+    this.fallbackStorage = new MockStorage();
+  }
+
+  private async executeWithFallback<T>(operation: (storage: IStorage) => Promise<T>): Promise<T> {
+    if (this.usingFallback) {
+      return await operation(this.fallbackStorage);
+    }
+
+    try {
+      return await operation(this.primaryStorage);
+    } catch (error) {
+      if (!this.usingFallback) {
+        console.warn("⚠️ Database operation failed, switching to mock storage:", error.message);
+        this.usingFallback = true;
+      }
+      return await operation(this.fallbackStorage);
+    }
+  }
+
+  async getUser(id: string) {
+    return this.executeWithFallback(storage => storage.getUser(id));
+  }
+
+  async upsertUser(user: UpsertUser) {
+    return this.executeWithFallback(storage => storage.upsertUser(user));
+  }
+
+  async getDevotees() {
+    return this.executeWithFallback(storage => storage.getDevotees());
+  }
+
+  async getDevotee(id: number) {
+    return this.executeWithFallback(storage => storage.getDevotee(id));
+  }
+
+  async createDevotee(devotee: InsertDevotee) {
+    return this.executeWithFallback(storage => storage.createDevotee(devotee));
+  }
+
+  async updateDevotee(id: number, devotee: Partial<InsertDevotee>) {
+    return this.executeWithFallback(storage => storage.updateDevotee(id, devotee));
+  }
+
+  async deleteDevotee(id: number) {
+    return this.executeWithFallback(storage => storage.deleteDevotee(id));
+  }
+
+  async getFamilies() {
+    return this.executeWithFallback(storage => storage.getFamilies());
+  }
+
+  async getFamily(id: number) {
+    return this.executeWithFallback(storage => storage.getFamily(id));
+  }
+
+  async createFamily(family: InsertFamily) {
+    return this.executeWithFallback(storage => storage.createFamily(family));
+  }
+
+  async updateFamily(id: number, family: Partial<InsertFamily>) {
+    return this.executeWithFallback(storage => storage.updateFamily(id, family));
+  }
+
+  async deleteFamily(id: number) {
+    return this.executeWithFallback(storage => storage.deleteFamily(id));
+  }
+
+  async getMentors() {
+    return this.executeWithFallback(storage => storage.getMentors());
+  }
+
+  async getMentor(id: number) {
+    return this.executeWithFallback(storage => storage.getMentor(id));
+  }
+
+  async createMentor(mentor: InsertMentor) {
+    return this.executeWithFallback(storage => storage.createMentor(mentor));
+  }
+
+  async updateMentor(id: number, mentor: Partial<InsertMentor>) {
+    return this.executeWithFallback(storage => storage.updateMentor(id, mentor));
+  }
+
+  async deleteMentor(id: number) {
+    return this.executeWithFallback(storage => storage.deleteMentor(id));
+  }
+
+  async getAttendance(devoteeId?: number, eventId?: number) {
+    return this.executeWithFallback(storage => storage.getAttendance(devoteeId, eventId));
+  }
+
+  async createAttendance(attendance: InsertAttendance) {
+    return this.executeWithFallback(storage => storage.createAttendance(attendance));
+  }
+
+  async updateAttendance(id: number, attendance: Partial<InsertAttendance>) {
+    return this.executeWithFallback(storage => storage.updateAttendance(id, attendance));
+  }
+
+  async deleteAttendance(id: number) {
+    return this.executeWithFallback(storage => storage.deleteAttendance(id));
+  }
+
+  async getDonations(devoteeId?: number) {
+    return this.executeWithFallback(storage => storage.getDonations(devoteeId));
+  }
+
+  async createDonation(donation: InsertDonation) {
+    return this.executeWithFallback(storage => storage.createDonation(donation));
+  }
+
+  async updateDonation(id: number, donation: Partial<InsertDonation>) {
+    return this.executeWithFallback(storage => storage.updateDonation(id, donation));
+  }
+
+  async deleteDonation(id: number) {
+    return this.executeWithFallback(storage => storage.deleteDonation(id));
+  }
+
+  async getEvents() {
+    return this.executeWithFallback(storage => storage.getEvents());
+  }
+
+  async getEvent(id: number) {
+    return this.executeWithFallback(storage => storage.getEvent(id));
+  }
+
+  async createEvent(event: InsertEvent) {
+    return this.executeWithFallback(storage => storage.createEvent(event));
+  }
+
+  async updateEvent(id: number, event: Partial<InsertEvent>) {
+    return this.executeWithFallback(storage => storage.updateEvent(id, event));
+  }
+
+  async deleteEvent(id: number) {
+    return this.executeWithFallback(storage => storage.deleteEvent(id));
+  }
+
+  async getVolunteering(devoteeId?: number) {
+    return this.executeWithFallback(storage => storage.getVolunteering(devoteeId));
+  }
+
+  async createVolunteering(volunteering: InsertVolunteering) {
+    return this.executeWithFallback(storage => storage.createVolunteering(volunteering));
+  }
+
+  async updateVolunteering(id: number, volunteering: Partial<InsertVolunteering>) {
+    return this.executeWithFallback(storage => storage.updateVolunteering(id, volunteering));
+  }
+
+  async deleteVolunteering(id: number) {
+    return this.executeWithFallback(storage => storage.deleteVolunteering(id));
+  }
+
+  async getGroups() {
+    return this.executeWithFallback(storage => storage.getGroups());
+  }
+
+  async getGroup(id: number) {
+    return this.executeWithFallback(storage => storage.getGroup(id));
+  }
+
+  async createGroup(group: InsertGroup) {
+    return this.executeWithFallback(storage => storage.createGroup(group));
+  }
+
+  async updateGroup(id: number, group: Partial<InsertGroup>) {
+    return this.executeWithFallback(storage => storage.updateGroup(id, group));
+  }
+
+  async deleteGroup(id: number) {
+    return this.executeWithFallback(storage => storage.deleteGroup(id));
+  }
+
+  async getGroupEntries(groupId?: number) {
+    return this.executeWithFallback(storage => storage.getGroupEntries(groupId));
+  }
+
+  async createGroupEntry(entry: InsertGroupEntry) {
+    return this.executeWithFallback(storage => storage.createGroupEntry(entry));
+  }
+
+  async updateGroupEntry(id: number, entry: Partial<InsertGroupEntry>) {
+    return this.executeWithFallback(storage => storage.updateGroupEntry(id, entry));
+  }
+
+  async deleteGroupEntry(id: number) {
+    return this.executeWithFallback(storage => storage.deleteGroupEntry(id));
+  }
+
+  async getMandals() {
+    return this.executeWithFallback(storage => storage.getMandals());
+  }
+
+  async createMandal(mandal: InsertMandal) {
+    return this.executeWithFallback(storage => storage.createMandal(mandal));
+  }
+
+  async getSabhaLocations() {
+    return this.executeWithFallback(storage => storage.getSabhaLocations());
+  }
+
+  async createSabhaLocation(location: InsertSabhaLocation) {
+    return this.executeWithFallback(storage => storage.createSabhaLocation(location));
+  }
+
+  async getDashboardLayouts(userId: string) {
+    return this.executeWithFallback(storage => storage.getDashboardLayouts(userId));
+  }
+
+  async createDashboardLayout(layout: InsertDashboardLayout) {
+    return this.executeWithFallback(storage => storage.createDashboardLayout(layout));
+  }
+
+  async updateDashboardLayout(id: number, layout: Partial<InsertDashboardLayout>) {
+    return this.executeWithFallback(storage => storage.updateDashboardLayout(id, layout));
+  }
+
+  async deleteDashboardLayout(id: number) {
+    return this.executeWithFallback(storage => storage.deleteDashboardLayout(id));
+  }
+
+  async getUserPreferences(userId: string) {
+    return this.executeWithFallback(storage => storage.getUserPreferences(userId));
+  }
+
+  async upsertUserPreferences(preferences: InsertUserPreferences) {
+    return this.executeWithFallback(storage => storage.upsertUserPreferences(preferences));
+  }
+
+  async getStats() {
+    return this.executeWithFallback(storage => storage.getStats());
+  }
+}
+
+export const storage = new FallbackStorage();

@@ -22,6 +22,7 @@ import Volunteering from "@/pages/Volunteering";
 import Analytics from "@/pages/Analytics";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/not-found";
+import IDCardGenerator from "@/pages/IDCardGenerator"; // Import the IDCardGenerator page
 
 function AppContent() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -63,9 +64,7 @@ function AppContent() {
           <Route path="/dashboard-designer">
             <Dashboard />
           </Route>
-          <Route path="/id-cards">
-            <Dashboard />
-          </Route>
+          <Route path="/id-cards" component={IDCardGenerator} /> {/* Added ID Card Generator route */}
           <Route path="/settings" component={Settings} />
           <Route component={NotFound} />
         </Switch>

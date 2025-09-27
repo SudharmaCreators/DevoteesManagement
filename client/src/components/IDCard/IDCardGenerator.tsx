@@ -218,3 +218,214 @@ export function IDCardGenerator() {
     </div>
   );
 }
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
+import { Badge } from "@/components/ui/badge";
+import { 
+  Palette, 
+  Type, 
+  Image, 
+  Layout,
+  Download,
+  Eye,
+  Settings
+} from "lucide-react";
+
+interface IDCardGeneratorProps {
+  devotees: any[];
+  onGenerate: (settings: any) => void;
+}
+
+export function IDCardGenerator({ devotees, onGenerate }: IDCardGeneratorProps) {
+  const [settings, setSettings] = useState({
+    template: 'default',
+    primaryColor: '#3b82f6',
+    secondaryColor: '#8b5cf6',
+    fontSize: 12,
+    includePhoto: true,
+    includeQR: true,
+    includeAddress: true,
+    orientation: 'portrait',
+    cardSize: 'credit',
+  });
+
+  const templates = [
+    { id: 'default', name: 'Default', description: 'Standard temple design' },
+    { id: 'minimal', name: 'Minimal', description: 'Clean and simple' },
+    { id: 'ornate', name: 'Ornate', description: 'Decorative borders' },
+    { id: 'modern', name: 'Modern', description: 'Contemporary design' },
+  ];
+
+  const cardSizes = [
+    { id: 'credit', name: 'Credit Card', dimensions: '85.6 × 53.98 mm' },
+    { id: 'badge', name: 'Badge', dimensions: '90 × 60 mm' },
+    { id: 'custom', name: 'Custom', dimensions: 'Custom size' },
+  ];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center space-x-2">
+          <Settings className="w-5 h-5" />
+          <span>ID Card Settings</span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Template Selection */}
+        <div>
+          <Label className="text-base font-medium">Template</Label>
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            {templates.map(template => (
+              <div
+                key={template.id}
+                className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                  settings.template === template.id
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border hover:border-primary/50'
+                }`}
+                onClick={() => setSettings(prev => ({ ...prev, template: template.id }))}
+              >
+                <div className="font-medium text-sm">{template.name}</div>
+                <div className="text-xs text-muted-foreground">{template.description}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Colors */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="primaryColor">Primary Color</Label>
+            <div className="flex items-center space-x-2 mt-1">
+              <Input
+                id="primaryColor"
+                type="color"
+                value={settings.primaryColor}
+                onChange={(e) => setSettings(prev => ({ ...prev, primaryColor: e.target.value }))}
+                className="w-12 h-8 p-0 border-0"
+              />
+              <Input
+                value={settings.primaryColor}
+                onChange={(e) => setSettings(prev => ({ ...prev, primaryColor: e.target.value }))}
+                className="flex-1"
+              />
+            </div>
+          </div>
+          
+          <div>
+            <Label htmlFor="secondaryColor">Secondary Color</Label>
+            <div className="flex items-center space-x-2 mt-1">
+              <Input
+                id="secondaryColor"
+                type="color"
+                value={settings.secondaryColor}
+                onChange={(e) => setSettings(prev => ({ ...prev, secondaryColor: e.target.value }))}
+                className="w-12 h-8 p-0 border-0"
+              />
+              <Input
+                value={settings.secondaryColor}
+                onChange={(e) => setSettings(prev => ({ ...prev, secondaryColor: e.target.value }))}
+                className="flex-1"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Font Size */}
+        <div>
+          <Label>Font Size: {settings.fontSize}px</Label>
+          <Slider
+            value={[settings.fontSize]}
+            onValueChange={([value]) => setSettings(prev => ({ ...prev, fontSize: value }))}
+            min={8}
+            max={16}
+            step={1}
+            className="mt-2"
+          />
+        </div>
+
+        {/* Card Size */}
+        <div>
+          <Label>Card Size</Label>
+          <Select 
+            value={settings.cardSize} 
+            onValueChange={(value) => setSettings(prev => ({ ...prev, cardSize: value }))}
+          >
+            <SelectTrigger className="mt-1">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {cardSizes.map(size => (
+                <SelectItem key={size.id} value={size.id}>
+                  <div>
+                    <div className="font-medium">{size.name}</div>
+                    <div className="text-xs text-muted-foreground">{size.dimensions}</div>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Options */}
+        <div className="space-y-3">
+          <Label className="text-base font-medium">Include Elements</Label>
+          
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Image className="w-4 h-4" />
+              <span>Profile Photo</span>
+            </div>
+            <Switch
+              checked={settings.includePhoto}
+              onCheckedChange={(checked) => setSettings(prev => ({ ...prev, includePhoto: checked }))}
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Layout className="w-4 h-4" />
+              <span>QR Code</span>
+            </div>
+            <Switch
+              checked={settings.includeQR}
+              onCheckedChange={(checked) => setSettings(prev => ({ ...prev, includeQR: checked }))}
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Type className="w-4 h-4" />
+              <span>Address</span>
+            </div>
+            <Switch
+              checked={settings.includeAddress}
+              onCheckedChange={(checked) => setSettings(prev => ({ ...prev, includeAddress: checked }))}
+            />
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex space-x-2 pt-4 border-t">
+          <Button 
+            onClick={() => onGenerate(settings)} 
+            className="flex-1"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Generate Cards
+          </Button>
+          <Button variant="outline">
+            <Eye className="w-4 h-4 mr-2" />
+            Preview
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
