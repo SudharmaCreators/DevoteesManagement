@@ -22,16 +22,16 @@ export const themes = [
 ];
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('devotional');
+  const [theme, setTheme] = React.useState<Theme>('devotional');
 
-  useEffect(() => {
+  React.useEffect(() => {
     const savedTheme = localStorage.getItem('theme') as Theme;
     if (savedTheme && themes.find(t => t.value === savedTheme)) {
       setTheme(savedTheme);
     }
   }, []);
 
-  useEffect(() => {
+  React.useEffect(() => {
     localStorage.setItem('theme', theme);
     document.body.className = `theme-${theme}`;
     

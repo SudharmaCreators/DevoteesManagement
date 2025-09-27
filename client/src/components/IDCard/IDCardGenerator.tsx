@@ -204,7 +204,7 @@ export function IDCardGenerator({ devotees, onGenerate }: IDCardGeneratorProps) 
           <div className="font-medium text-sm">Generation Summary</div>
           <div className="text-sm text-muted-foreground">
             <div>Template: <Badge variant="outline">{templates.find(t => t.id === settings.template)?.name}</Badge></div>
-            <div className="mt-1">Cards to generate: <Badge>{devotees.length}</Badge></div>
+            <div className="mt-1">Cards to generate: <Badge>{devotees?.length || 0}</Badge></div>
           </div>
         </div>
 

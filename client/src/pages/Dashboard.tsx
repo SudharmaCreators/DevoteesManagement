@@ -120,7 +120,14 @@ export default function Dashboard() {
         <DashboardDesigner />
 
         {/* ID Card Generation */}
-        <IDCardGenerator />
+        <IDCardGenerator 
+          devotees={devotees || []} 
+          onGenerate={(settings) => {
+            console.log("Generating ID cards with settings:", settings);
+            // In a real implementation, this would call an API to generate PDFs
+            alert(`Generating ID cards for ${devotees?.length || 0} devotees`);
+          }}
+        />
       </main>
     </div>
   );
