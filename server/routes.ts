@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { storage as getStorage, MockStorage } from "./storage";
 // import { setupAuth, isAuthenticated } from "./replitAuth";
 
 // Mock authentication for development
@@ -13,20 +13,20 @@ const isAuthenticated = (req: any, res: any, next: any) => {
   };
   next();
 };
-import { 
-  insertDevoteeSchema, 
-  insertFamilySchema, 
-  insertMentorSchema, 
-  insertAttendanceSchema, 
-  insertDonationSchema, 
-  insertEventSchema, 
-  insertVolunteeringSchema, 
+import {
+  insertDevoteeSchema,
+  insertFamilySchema,
+  insertMentorSchema,
+  insertAttendanceSchema,
+  insertDonationSchema,
+  insertEventSchema,
+  insertVolunteeringSchema,
   insertGroupSchema,
   insertGroupEntrySchema,
   insertMandalSchema,
   insertSabhaLocationSchema,
-  insertDashboardLayoutSchema, 
-  insertUserPreferencesSchema 
+  insertDashboardLayoutSchema,
+  insertUserPreferencesSchema
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -59,7 +59,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Devotee routes - temporarily remove auth middleware
   app.get('/api/devotees', async (req, res) => {
     try {
-      const devotees = await storage.getDevotees();
+      const devotees = await getStorage().getDevotees();
       res.json(devotees);
     } catch (error) {
       console.error("Error fetching devotees:", error);
@@ -70,7 +70,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/devotees/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const devotee = await storage.getDevotee(id);
+      const devotee = await getStorage().getDevotee(id);
       if (!devotee) {
         return res.status(404).json({ message: "Devotee not found" });
       }
@@ -84,7 +84,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/devotees', isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertDevoteeSchema.parse(req.body);
-      const devotee = await storage.createDevotee(validatedData);
+      const devotee = await getStorage().createDevotee(validatedData);
       res.status(201).json(devotee);
     } catch (error) {
       console.error("Error creating devotee:", error);
@@ -96,7 +96,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const validatedData = insertDevoteeSchema.partial().parse(req.body);
-      const devotee = await storage.updateDevotee(id, validatedData);
+      const devotee = await getStorage().updateDevotee(id, validatedData);
       res.json(devotee);
     } catch (error) {
       console.error("Error updating devotee:", error);
@@ -107,7 +107,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/devotees/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const success = await storage.deleteDevotee(id);
+      const success = await getStorage().deleteDevotee(id);
       if (success) {
         res.status(204).send();
       } else {
@@ -122,7 +122,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Family routes
   app.get('/api/families', isAuthenticated, async (req, res) => {
     try {
-      const families = await storage.getFamilies();
+      const families = await getStorage().getFamilies();
       res.json(families);
     } catch (error) {
       console.error("Error fetching families:", error);
@@ -133,7 +133,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/families', isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertFamilySchema.parse(req.body);
-      const family = await storage.createFamily(validatedData);
+      const family = await getStorage().createFamily(validatedData);
       res.status(201).json(family);
     } catch (error) {
       console.error("Error creating family:", error);
@@ -144,7 +144,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Mentor routes
   app.get('/api/mentors', isAuthenticated, async (req, res) => {
     try {
-      const mentors = await storage.getMentors();
+      const mentors = await getStorage().getMentors();
       res.json(mentors);
     } catch (error) {
       console.error("Error fetching mentors:", error);
@@ -155,7 +155,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/mentors', isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertMentorSchema.parse(req.body);
-      const mentor = await storage.createMentor(validatedData);
+      const mentor = await getStorage().createMentor(validatedData);
       res.status(201).json(mentor);
     } catch (error) {
       console.error("Error creating mentor:", error);
@@ -168,7 +168,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const devoteeId = req.query.devoteeId ? parseInt(req.query.devoteeId as string) : undefined;
       const eventId = req.query.eventId ? parseInt(req.query.eventId as string) : undefined;
-      const attendance = await storage.getAttendance(devoteeId, eventId);
+      const attendance = await getStorage().getAttendance(devoteeId, eventId);
       res.json(attendance);
     } catch (error) {
       console.error("Error fetching attendance:", error);
@@ -182,7 +182,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body,
         recordedBy: req.user.claims.sub,
       });
-      const attendance = await storage.createAttendance(validatedData);
+      const attendance = await getStorage().createAttendance(validatedData);
       res.status(201).json(attendance);
     } catch (error) {
       console.error("Error creating attendance:", error);
@@ -194,7 +194,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/donations', isAuthenticated, async (req, res) => {
     try {
       const devoteeId = req.query.devoteeId ? parseInt(req.query.devoteeId as string) : undefined;
-      const donations = await storage.getDonations(devoteeId);
+      const donations = await getStorage().getDonations(devoteeId);
       res.json(donations);
     } catch (error) {
       console.error("Error fetching donations:", error);
@@ -208,7 +208,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body,
         recordedBy: req.user.claims.sub,
       });
-      const donation = await storage.createDonation(validatedData);
+      const donation = await getStorage().createDonation(validatedData);
       res.status(201).json(donation);
     } catch (error) {
       console.error("Error creating donation:", error);
@@ -219,7 +219,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Event routes
   app.get('/api/events', isAuthenticated, async (req, res) => {
     try {
-      const events = await storage.getEvents();
+      const events = await getStorage().getEvents();
       res.json(events);
     } catch (error) {
       console.error("Error fetching events:", error);
@@ -233,7 +233,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body,
         organizerId: req.user.claims.sub,
       });
-      const event = await storage.createEvent(validatedData);
+      const event = await getStorage().createEvent(validatedData);
       res.status(201).json(event);
     } catch (error) {
       console.error("Error creating event:", error);
@@ -245,7 +245,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/volunteering', isAuthenticated, async (req, res) => {
     try {
       const devoteeId = req.query.devoteeId ? parseInt(req.query.devoteeId as string) : undefined;
-      const volunteering = await storage.getVolunteering(devoteeId);
+      const volunteering = await getStorage().getVolunteering(devoteeId);
       res.json(volunteering);
     } catch (error) {
       console.error("Error fetching volunteering:", error);
@@ -256,7 +256,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/volunteering', isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertVolunteeringSchema.parse(req.body);
-      const volunteering = await storage.createVolunteering(validatedData);
+      const volunteering = await getStorage().createVolunteering(validatedData);
       res.status(201).json(volunteering);
     } catch (error) {
       console.error("Error creating volunteering:", error);
@@ -267,7 +267,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Group routes
   app.get('/api/groups', isAuthenticated, async (req, res) => {
     try {
-      const groups = await storage.getGroups();
+      const groups = await getStorage().getGroups();
       res.json(groups);
     } catch (error) {
       console.error("Error fetching groups:", error);
@@ -278,7 +278,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/groups', isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertGroupSchema.parse(req.body);
-      const group = await storage.createGroup(validatedData);
+      const group = await getStorage().createGroup(validatedData);
       res.status(201).json(group);
     } catch (error) {
       console.error("Error creating group:", error);
@@ -290,7 +290,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const validatedData = insertGroupSchema.partial().parse(req.body);
-      const group = await storage.updateGroup(id, validatedData);
+      const group = await getStorage().updateGroup(id, validatedData);
       res.json(group);
     } catch (error) {
       console.error("Error updating group:", error);
@@ -301,7 +301,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/groups/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const success = await storage.deleteGroup(id);
+      const success = await getStorage().deleteGroup(id);
       if (success) {
         res.status(204).send();
       } else {
@@ -317,7 +317,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/group-entries', isAuthenticated, async (req, res) => {
     try {
       const groupId = req.query.groupId ? parseInt(req.query.groupId as string) : undefined;
-      const entries = await storage.getGroupEntries(groupId);
+      const entries = await getStorage().getGroupEntries(groupId);
       res.json(entries);
     } catch (error) {
       console.error("Error fetching group entries:", error);
@@ -328,7 +328,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/group-entries', isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertGroupEntrySchema.parse(req.body);
-      const entry = await storage.createGroupEntry(validatedData);
+      const entry = await getStorage().createGroupEntry(validatedData);
       res.status(201).json(entry);
     } catch (error) {
       console.error("Error creating group entry:", error);
@@ -339,7 +339,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Mandal routes
   app.get('/api/mandals', isAuthenticated, async (req, res) => {
     try {
-      const mandals = await storage.getMandals();
+      const mandals = await getStorage().getMandals();
       res.json(mandals);
     } catch (error) {
       console.error("Error fetching mandals:", error);
@@ -350,7 +350,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/mandals', isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertMandalSchema.parse(req.body);
-      const mandal = await storage.createMandal(validatedData);
+      const mandal = await getStorage().createMandal(validatedData);
       res.status(201).json(mandal);
     } catch (error) {
       console.error("Error creating mandal:", error);
@@ -361,7 +361,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Sabha location routes
   app.get('/api/sabha-locations', isAuthenticated, async (req, res) => {
     try {
-      const locations = await storage.getSabhaLocations();
+      const locations = await getStorage().getSabhaLocations();
       res.json(locations);
     } catch (error) {
       console.error("Error fetching sabha locations:", error);
@@ -372,7 +372,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/sabha-locations', isAuthenticated, async (req, res) => {
     try {
       const validatedData = insertSabhaLocationSchema.parse(req.body);
-      const location = await storage.createSabhaLocation(validatedData);
+      const location = await getStorage().createSabhaLocation(validatedData);
       res.status(201).json(location);
     } catch (error) {
       console.error("Error creating sabha location:", error);
@@ -384,7 +384,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/dashboard-layouts', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const layouts = await storage.getDashboardLayouts(userId);
+      const layouts = await getStorage().getDashboardLayouts(userId);
       res.json(layouts);
     } catch (error) {
       console.error("Error fetching dashboard layouts:", error);
@@ -398,7 +398,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body,
         userId: req.user.claims.sub,
       });
-      const layout = await storage.createDashboardLayout(validatedData);
+      const layout = await getStorage().createDashboardLayout(validatedData);
       res.status(201).json(layout);
     } catch (error) {
       console.error("Error creating dashboard layout:", error);
@@ -410,7 +410,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/user-preferences', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const preferences = await storage.getUserPreferences(userId);
+      const preferences = await getStorage().getUserPreferences(userId);
       res.json(preferences);
     } catch (error) {
       console.error("Error fetching user preferences:", error);
@@ -424,7 +424,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body,
         userId: req.user.claims.sub,
       });
-      const preferences = await storage.upsertUserPreferences(validatedData);
+      const preferences = await getStorage().upsertUserPreferences(validatedData);
       res.json(preferences);
     } catch (error) {
       console.error("Error updating user preferences:", error);
@@ -435,7 +435,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Analytics routes
   app.get('/api/stats', isAuthenticated, async (req, res) => {
     try {
-      const stats = await storage.getStats();
+      const stats = await getStorage().getStats();
       res.json(stats);
     } catch (error) {
       console.error("Error fetching stats:", error);

@@ -78,10 +78,10 @@ export function Sidebar() {
           const Icon = item.icon;
           return (
             <Link key={item.name} href={item.href}>
-              <a className={getNavItemClass(item.href)}>
+              <div className={getNavItemClass(item.href)}>
                 <Icon className="w-5 h-5" />
                 <span>{item.name}</span>
-              </a>
+              </div>
             </Link>
           );
         })}
