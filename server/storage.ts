@@ -523,7 +523,7 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-import { MockStorage } from "./mockStorage";
+import { MemoryStorage } from "./memoryStorage";
 
 // Create a wrapper that handles database failures gracefully
 class FallbackStorage implements IStorage {
@@ -532,8 +532,8 @@ class FallbackStorage implements IStorage {
   private usingFallback = false;
 
   constructor() {
-    this.primaryStorage = new DatabaseStorage();
-    this.fallbackStorage = new MockStorage();
+    this.primaryStorage = new MemoryStorage();
+    this.fallbackStorage = new MemoryStorage();
   }
 
   private async executeWithFallback<T>(operation: (storage: IStorage) => Promise<T>): Promise<T> {
