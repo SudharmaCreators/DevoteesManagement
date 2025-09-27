@@ -12,6 +12,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { EncryptionService } from "@/lib/encryption";
 import { Group, Mandal, SabhaLocation } from "@shared/schema";
 
 interface GroupEntryFormProps {
@@ -103,28 +104,22 @@ export function GroupEntryForm({ group, mandals, sabhaLocations, onSubmit, onCan
     }
   };
 
-  const generateUniqueMemberId = () => {
+  const handleSubmit = () => {
+    // Auto-generate unique member ID if not present
     const dob = formData.dateOfBirth;
     const mobile = formData.mobileNumber;
     const mandalName = formData.mandalName;
     
+    let uniqueMemberId = '';
+    let qrIdentifier = '';
+    
     if (dob && mobile && mandalName) {
-      const dobDate = new Date(dob);
-      const ddmmyyyy = dobDate.toISOString().slice(0, 10).replace(/-/g, '');
       const mandal = mandals.find(m => m.name === mandalName);
       const mandalCode = mandal?.code || '00';
-      const lastThreeDigits = mobile.slice(-3);
       
-      const uniqueId = `${ddmmyyyy}${mandalCode}${lastThreeDigits}`;
-      return uniqueId;
+      uniqueMemberId = EncryptionService.generateUniqueId(dob, mandalCode, mobile);
+      qrIdentifier = EncryptionService.createQRIdentifier(uniqueMemberId);
     }
-    return '';
-  };
-
-  const handleSubmit = () => {
-    // Auto-generate unique member ID if not present
-    const uniqueMemberId = generateUniqueMemberId();
-    const qrIdentifier = uniqueMemberId ? `JAISHRIMADHAV_${uniqueMemberId}` : '';
     
     const entryData = {
       groupId: group.id,
