@@ -4,17 +4,20 @@ import { Header } from "@/components/Layout/Header";
 import { DevoteeList } from "@/components/Devotees/DevoteeList";
 import { DevoteeForm } from "@/components/Devotees/DevoteeForm";
 import { DevoteeProfile } from "@/components/Devotees/DevoteeProfile";
+import { DevoteeGroups } from "@/components/Devotees/DevoteeGroups";
 import { LoadingSpinner } from "@/components/Common/LoadingSpinner";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Devotee, InsertDevotee } from "@shared/schema";
 
 type ViewMode = "list" | "form" | "profile";
 
 export default function Devotees() {
   const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [activeTab, setActiveTab] = useState("devotees");
   const [selectedDevotee, setSelectedDevotee] = useState<Devotee | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -142,14 +145,27 @@ export default function Devotees() {
       <Header title="Devotees" subtitle="Manage devotee information and profiles" />
       
       <main className="flex-1 overflow-y-auto p-6">
-        <DevoteeList
-          devotees={devotees || []}
-          onAdd={handleAdd}
-          onEdit={handleEdit}
-          onView={handleView}
-          onDelete={handleDelete}
-          isLoading={isLoading}
-        />
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="devotees">Devotees List</TabsTrigger>
+            <TabsTrigger value="groups">Devotee Groups</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="devotees" className="mt-6">
+            <DevoteeList
+              devotees={devotees || []}
+              onAdd={handleAdd}
+              onEdit={handleEdit}
+              onView={handleView}
+              onDelete={handleDelete}
+              isLoading={isLoading}
+            />
+          </TabsContent>
+          
+          <TabsContent value="groups" className="mt-6">
+            <DevoteeGroups />
+          </TabsContent>
+        </Tabs>
       </main>
 
       {/* Form Dialog */}

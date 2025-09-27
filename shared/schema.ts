@@ -184,7 +184,7 @@ export const volunteering = pgTable("volunteering", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Groups storage table
+// Groups storage table - Enhanced for dynamic groups
 export const groups = pgTable("groups", {
   id: serial("id").primaryKey(),
   groupName: varchar("group_name").notNull(),
@@ -196,10 +196,45 @@ export const groups = pgTable("groups", {
   meetingSchedule: varchar("meeting_schedule"),
   leaderId: integer("leader_id"),
   requirements: text("requirements"),
+  customFields: jsonb("custom_fields"), // Store dynamic field definitions
   createdBy: varchar("created_by"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Dynamic group entries table
+export const groupEntries = pgTable("group_entries", {
+  id: serial("id").primaryKey(),
+  groupId: integer("group_id").notNull(),
+  entryData: jsonb("entry_data").notNull(), // Store all custom field values
+  uniqueMemberId: varchar("unique_member_id").unique(),
+  qrIdentifier: text("qr_identifier"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Mandals table for dropdown support
+export const mandals = pgTable("mandals", {
+  id: serial("id").primaryKey(),
+  name: varchar("name").notNull(),
+  hindiName: varchar("hindi_name"),
+  code: varchar("code", { length: 2 }).unique().notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Sabha locations table
+export const sabhaLocations = pgTable("sabha_locations", {
+  id: serial("id").primaryKey(),
+  name: varchar("name").notNull(),
+  address: text("address"),
+  city: varchar("city"),
+  state: varchar("state"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Group Memberships storage table
@@ -317,6 +352,22 @@ export const groupsRelations = relations(groups, ({ one, many }) => ({
     references: [devotees.id],
   }),
   memberships: many(groupMemberships),
+  entries: many(groupEntries),
+}));
+
+export const groupEntriesRelations = relations(groupEntries, ({ one }) => ({
+  group: one(groups, {
+    fields: [groupEntries.groupId],
+    references: [groups.id],
+  }),
+}));
+
+export const mandalsRelations = relations(mandals, ({ many }) => ({
+  // Can be extended for relationships
+}));
+
+export const sabhaLocationsRelations = relations(sabhaLocations, ({ many }) => ({
+  // Can be extended for relationships
 }));
 
 export const groupMembershipsRelations = relations(groupMemberships, ({ one }) => ({
@@ -399,6 +450,22 @@ export const insertGroupSchema = createInsertSchema(groups).omit({
   updatedAt: true,
 });
 
+export const insertGroupEntrySchema = createInsertSchema(groupEntries).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertMandalSchema = createInsertSchema(mandals).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertSabhaLocationSchema = createInsertSchema(sabhaLocations).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertDashboardLayoutSchema = createInsertSchema(dashboardLayouts).omit({
   id: true,
   createdAt: true,
@@ -438,6 +505,15 @@ export type Volunteering = typeof volunteering.$inferSelect;
 
 export type InsertGroup = z.infer<typeof insertGroupSchema>;
 export type Group = typeof groups.$inferSelect;
+
+export type InsertGroupEntry = z.infer<typeof insertGroupEntrySchema>;
+export type GroupEntry = typeof groupEntries.$inferSelect;
+
+export type InsertMandal = z.infer<typeof insertMandalSchema>;
+export type Mandal = typeof mandals.$inferSelect;
+
+export type InsertSabhaLocation = z.infer<typeof insertSabhaLocationSchema>;
+export type SabhaLocation = typeof sabhaLocations.$inferSelect;
 
 export type InsertDashboardLayout = z.infer<typeof insertDashboardLayoutSchema>;
 export type DashboardLayout = typeof dashboardLayouts.$inferSelect;

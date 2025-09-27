@@ -10,6 +10,9 @@ import {
   volunteering,
   groups,
   groupMemberships,
+  groupEntries,
+  mandals,
+  sabhaLocations,
   dashboardLayouts,
   userPreferences,
   type User,
@@ -30,6 +33,12 @@ import {
   type InsertVolunteering,
   type Group,
   type InsertGroup,
+  type GroupEntry,
+  type InsertGroupEntry,
+  type Mandal,
+  type InsertMandal,
+  type SabhaLocation,
+  type InsertSabhaLocation,
   type DashboardLayout,
   type InsertDashboardLayout,
   type UserPreferences,
@@ -96,6 +105,20 @@ export interface IStorage {
   createGroup(group: InsertGroup): Promise<Group>;
   updateGroup(id: number, group: Partial<InsertGroup>): Promise<Group>;
   deleteGroup(id: number): Promise<boolean>;
+  
+  // Group entries operations
+  getGroupEntries(groupId?: number): Promise<GroupEntry[]>;
+  createGroupEntry(entry: InsertGroupEntry): Promise<GroupEntry>;
+  updateGroupEntry(id: number, entry: Partial<InsertGroupEntry>): Promise<GroupEntry>;
+  deleteGroupEntry(id: number): Promise<boolean>;
+  
+  // Mandal operations
+  getMandals(): Promise<Mandal[]>;
+  createMandal(mandal: InsertMandal): Promise<Mandal>;
+  
+  // Sabha location operations
+  getSabhaLocations(): Promise<SabhaLocation[]>;
+  createSabhaLocation(location: InsertSabhaLocation): Promise<SabhaLocation>;
   
   // Dashboard operations
   getDashboardLayouts(userId: string): Promise<DashboardLayout[]>;
@@ -375,6 +398,56 @@ export class DatabaseStorage implements IStorage {
   async deleteGroup(id: number): Promise<boolean> {
     const result = await db.delete(groups).where(eq(groups.id, id));
     return result.rowCount > 0;
+  }
+
+  // Group entries operations
+  async getGroupEntries(groupId?: number): Promise<GroupEntry[]> {
+    let query = db.select().from(groupEntries);
+    
+    if (groupId) {
+      query = query.where(eq(groupEntries.groupId, groupId));
+    }
+    
+    return await query.orderBy(desc(groupEntries.createdAt));
+  }
+
+  async createGroupEntry(entry: InsertGroupEntry): Promise<GroupEntry> {
+    const [newEntry] = await db.insert(groupEntries).values(entry).returning();
+    return newEntry;
+  }
+
+  async updateGroupEntry(id: number, entry: Partial<InsertGroupEntry>): Promise<GroupEntry> {
+    const [updatedEntry] = await db
+      .update(groupEntries)
+      .set({ ...entry, updatedAt: new Date() })
+      .where(eq(groupEntries.id, id))
+      .returning();
+    return updatedEntry;
+  }
+
+  async deleteGroupEntry(id: number): Promise<boolean> {
+    const result = await db.delete(groupEntries).where(eq(groupEntries.id, id));
+    return result.rowCount > 0;
+  }
+
+  // Mandal operations
+  async getMandals(): Promise<Mandal[]> {
+    return await db.select().from(mandals).where(eq(mandals.isActive, true));
+  }
+
+  async createMandal(mandal: InsertMandal): Promise<Mandal> {
+    const [newMandal] = await db.insert(mandals).values(mandal).returning();
+    return newMandal;
+  }
+
+  // Sabha location operations
+  async getSabhaLocations(): Promise<SabhaLocation[]> {
+    return await db.select().from(sabhaLocations).where(eq(sabhaLocations.isActive, true));
+  }
+
+  async createSabhaLocation(location: InsertSabhaLocation): Promise<SabhaLocation> {
+    const [newLocation] = await db.insert(sabhaLocations).values(location).returning();
+    return newLocation;
   }
 
   // Dashboard operations

@@ -21,7 +21,10 @@ import {
   insertDonationSchema, 
   insertEventSchema, 
   insertVolunteeringSchema, 
-  insertGroupSchema, 
+  insertGroupSchema,
+  insertGroupEntrySchema,
+  insertMandalSchema,
+  insertSabhaLocationSchema,
   insertDashboardLayoutSchema, 
   insertUserPreferencesSchema 
 } from "@shared/schema";
@@ -280,6 +283,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating group:", error);
       res.status(400).json({ message: "Invalid group data" });
+    }
+  });
+
+  app.put('/api/groups/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validatedData = insertGroupSchema.partial().parse(req.body);
+      const group = await storage.updateGroup(id, validatedData);
+      res.json(group);
+    } catch (error) {
+      console.error("Error updating group:", error);
+      res.status(400).json({ message: "Invalid group data" });
+    }
+  });
+
+  app.delete('/api/groups/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteGroup(id);
+      if (success) {
+        res.status(204).send();
+      } else {
+        res.status(404).json({ message: "Group not found" });
+      }
+    } catch (error) {
+      console.error("Error deleting group:", error);
+      res.status(500).json({ message: "Failed to delete group" });
+    }
+  });
+
+  // Group entries routes
+  app.get('/api/group-entries', isAuthenticated, async (req, res) => {
+    try {
+      const groupId = req.query.groupId ? parseInt(req.query.groupId as string) : undefined;
+      const entries = await storage.getGroupEntries(groupId);
+      res.json(entries);
+    } catch (error) {
+      console.error("Error fetching group entries:", error);
+      res.status(500).json({ message: "Failed to fetch group entries" });
+    }
+  });
+
+  app.post('/api/group-entries', isAuthenticated, async (req, res) => {
+    try {
+      const validatedData = insertGroupEntrySchema.parse(req.body);
+      const entry = await storage.createGroupEntry(validatedData);
+      res.status(201).json(entry);
+    } catch (error) {
+      console.error("Error creating group entry:", error);
+      res.status(400).json({ message: "Invalid group entry data" });
+    }
+  });
+
+  // Mandal routes
+  app.get('/api/mandals', isAuthenticated, async (req, res) => {
+    try {
+      const mandals = await storage.getMandals();
+      res.json(mandals);
+    } catch (error) {
+      console.error("Error fetching mandals:", error);
+      res.status(500).json({ message: "Failed to fetch mandals" });
+    }
+  });
+
+  app.post('/api/mandals', isAuthenticated, async (req, res) => {
+    try {
+      const validatedData = insertMandalSchema.parse(req.body);
+      const mandal = await storage.createMandal(validatedData);
+      res.status(201).json(mandal);
+    } catch (error) {
+      console.error("Error creating mandal:", error);
+      res.status(400).json({ message: "Invalid mandal data" });
+    }
+  });
+
+  // Sabha location routes
+  app.get('/api/sabha-locations', isAuthenticated, async (req, res) => {
+    try {
+      const locations = await storage.getSabhaLocations();
+      res.json(locations);
+    } catch (error) {
+      console.error("Error fetching sabha locations:", error);
+      res.status(500).json({ message: "Failed to fetch sabha locations" });
+    }
+  });
+
+  app.post('/api/sabha-locations', isAuthenticated, async (req, res) => {
+    try {
+      const validatedData = insertSabhaLocationSchema.parse(req.body);
+      const location = await storage.createSabhaLocation(validatedData);
+      res.status(201).json(location);
+    } catch (error) {
+      console.error("Error creating sabha location:", error);
+      res.status(400).json({ message: "Invalid sabha location data" });
     }
   });
 
