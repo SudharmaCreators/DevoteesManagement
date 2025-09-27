@@ -144,3 +144,95 @@ export function IDCardPreview({ devotee, template, includeQRCode, includePhoto }
     </div>
   );
 }
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { User, Calendar, Phone, MapPin } from "lucide-react";
+
+interface IDCardPreviewProps {
+  devotee: any;
+}
+
+export function IDCardPreview({ devotee }: IDCardPreviewProps) {
+  if (!devotee) return null;
+
+  return (
+    <div className="w-full max-w-sm mx-auto">
+      <Card className="overflow-hidden bg-gradient-to-br from-primary/10 to-secondary/10">
+        <CardContent className="p-0">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-primary to-secondary text-primary-foreground p-3 text-center">
+            <h3 className="font-bold text-sm">॥ Madhav Parivar ॥</h3>
+            <p className="text-xs opacity-90">Member ID Card</p>
+          </div>
+
+          {/* Main Content */}
+          <div className="p-4 space-y-3">
+            {/* Photo and Basic Info */}
+            <div className="flex items-center space-x-3">
+              <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center">
+                {devotee.profileImage ? (
+                  <img 
+                    src={devotee.profileImage} 
+                    alt={devotee.firstName}
+                    className="w-full h-full object-cover rounded-lg"
+                  />
+                ) : (
+                  <User className="w-8 h-8 text-muted-foreground" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-semibold text-sm truncate">
+                  {devotee.firstName} {devotee.lastName}
+                </h4>
+                <p className="text-xs text-muted-foreground">
+                  ID: {devotee.devoteeId}
+                </p>
+                <Badge variant="secondary" className="text-xs mt-1">
+                  {devotee.spiritualLevel || 'Active'}
+                </Badge>
+              </div>
+            </div>
+
+            {/* Details */}
+            <div className="space-y-2 text-xs">
+              {devotee.dateOfBirth && (
+                <div className="flex items-center space-x-2">
+                  <Calendar className="w-3 h-3 text-muted-foreground" />
+                  <span>{new Date(devotee.dateOfBirth).toLocaleDateString()}</span>
+                </div>
+              )}
+              
+              {devotee.phone && (
+                <div className="flex items-center space-x-2">
+                  <Phone className="w-3 h-3 text-muted-foreground" />
+                  <span>{devotee.phone}</span>
+                </div>
+              )}
+              
+              {devotee.city && (
+                <div className="flex items-center space-x-2">
+                  <MapPin className="w-3 h-3 text-muted-foreground" />
+                  <span>{devotee.city}, {devotee.state}</span>
+                </div>
+              )}
+            </div>
+
+            {/* QR Code Placeholder */}
+            <div className="flex justify-center pt-2">
+              <div className="w-12 h-12 bg-muted rounded border-2 border-dashed border-muted-foreground/30 flex items-center justify-center">
+                <span className="text-xs text-muted-foreground">QR</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="bg-muted px-3 py-2 text-center">
+            <p className="text-xs text-muted-foreground">
+              Valid • {new Date().getFullYear()}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

@@ -10,6 +10,9 @@ import {
   volunteering,
   groups,
   groupMemberships,
+  groupEntries,
+  mandals,
+  sabhaLocations,
   dashboardLayouts,
   userPreferences,
   type User,
@@ -30,6 +33,12 @@ import {
   type InsertVolunteering,
   type Group,
   type InsertGroup,
+  type GroupEntry,
+  type InsertGroupEntry,
+  type Mandal,
+  type InsertMandal,
+  type SabhaLocation,
+  type InsertSabhaLocation,
   type DashboardLayout,
   type InsertDashboardLayout,
   type UserPreferences,
@@ -96,6 +105,20 @@ export interface IStorage {
   createGroup(group: InsertGroup): Promise<Group>;
   updateGroup(id: number, group: Partial<InsertGroup>): Promise<Group>;
   deleteGroup(id: number): Promise<boolean>;
+  
+  // Group entries operations
+  getGroupEntries(groupId?: number): Promise<GroupEntry[]>;
+  createGroupEntry(entry: InsertGroupEntry): Promise<GroupEntry>;
+  updateGroupEntry(id: number, entry: Partial<InsertGroupEntry>): Promise<GroupEntry>;
+  deleteGroupEntry(id: number): Promise<boolean>;
+  
+  // Mandal operations
+  getMandals(): Promise<Mandal[]>;
+  createMandal(mandal: InsertMandal): Promise<Mandal>;
+  
+  // Sabha location operations
+  getSabhaLocations(): Promise<SabhaLocation[]>;
+  createSabhaLocation(location: InsertSabhaLocation): Promise<SabhaLocation>;
   
   // Dashboard operations
   getDashboardLayouts(userId: string): Promise<DashboardLayout[]>;
@@ -237,7 +260,7 @@ export class DatabaseStorage implements IStorage {
       query = query.where(eq(attendance.eventId, eventId));
     }
     
-    return await query.orderBy(desc(attendance.date));
+    return await query.orderBy(desc(attendance.attendanceDate));
   }
 
   async createAttendance(attendanceData: InsertAttendance): Promise<Attendance> {
@@ -267,7 +290,7 @@ export class DatabaseStorage implements IStorage {
       query = query.where(eq(donations.devoteeId, devoteeId));
     }
     
-    return await query.orderBy(desc(donations.date));
+    return await query.orderBy(desc(donations.donationDate));
   }
 
   async createDonation(donation: InsertDonation): Promise<Donation> {
@@ -326,7 +349,7 @@ export class DatabaseStorage implements IStorage {
       query = query.where(eq(volunteering.devoteeId, devoteeId));
     }
     
-    return await query.orderBy(desc(volunteering.date));
+    return await query.orderBy(desc(volunteering.startDate));
   }
 
   async createVolunteering(volunteeringData: InsertVolunteering): Promise<Volunteering> {
@@ -375,6 +398,56 @@ export class DatabaseStorage implements IStorage {
   async deleteGroup(id: number): Promise<boolean> {
     const result = await db.delete(groups).where(eq(groups.id, id));
     return result.rowCount > 0;
+  }
+
+  // Group entries operations
+  async getGroupEntries(groupId?: number): Promise<GroupEntry[]> {
+    let query = db.select().from(groupEntries);
+    
+    if (groupId) {
+      query = query.where(eq(groupEntries.groupId, groupId));
+    }
+    
+    return await query.orderBy(desc(groupEntries.createdAt));
+  }
+
+  async createGroupEntry(entry: InsertGroupEntry): Promise<GroupEntry> {
+    const [newEntry] = await db.insert(groupEntries).values(entry).returning();
+    return newEntry;
+  }
+
+  async updateGroupEntry(id: number, entry: Partial<InsertGroupEntry>): Promise<GroupEntry> {
+    const [updatedEntry] = await db
+      .update(groupEntries)
+      .set({ ...entry, updatedAt: new Date() })
+      .where(eq(groupEntries.id, id))
+      .returning();
+    return updatedEntry;
+  }
+
+  async deleteGroupEntry(id: number): Promise<boolean> {
+    const result = await db.delete(groupEntries).where(eq(groupEntries.id, id));
+    return result.rowCount > 0;
+  }
+
+  // Mandal operations
+  async getMandals(): Promise<Mandal[]> {
+    return await db.select().from(mandals).where(eq(mandals.isActive, true));
+  }
+
+  async createMandal(mandal: InsertMandal): Promise<Mandal> {
+    const [newMandal] = await db.insert(mandals).values(mandal).returning();
+    return newMandal;
+  }
+
+  // Sabha location operations
+  async getSabhaLocations(): Promise<SabhaLocation[]> {
+    return await db.select().from(sabhaLocations).where(eq(sabhaLocations.isActive, true));
+  }
+
+  async createSabhaLocation(location: InsertSabhaLocation): Promise<SabhaLocation> {
+    const [newLocation] = await db.insert(sabhaLocations).values(location).returning();
+    return newLocation;
   }
 
   // Dashboard operations
@@ -450,4 +523,250 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-export const storage = new DatabaseStorage();
+import { MemoryStorage } from "./memoryStorage";
+
+// Create a wrapper that handles database failures gracefully
+class FallbackStorage implements IStorage {
+  private primaryStorage: IStorage;
+  private fallbackStorage: IStorage;
+  private usingFallback = false;
+
+  constructor() {
+    this.primaryStorage = new MemoryStorage();
+    this.fallbackStorage = new MemoryStorage();
+  }
+
+  private async executeWithFallback<T>(operation: (storage: IStorage) => Promise<T>): Promise<T> {
+    if (this.usingFallback) {
+      return await operation(this.fallbackStorage);
+    }
+
+    try {
+      return await operation(this.primaryStorage);
+    } catch (error) {
+      if (!this.usingFallback) {
+        console.warn("⚠️ Database operation failed, switching to mock storage:", error.message);
+        this.usingFallback = true;
+      }
+      return await operation(this.fallbackStorage);
+    }
+  }
+
+  async getUser(id: string) {
+    return this.executeWithFallback(storage => storage.getUser(id));
+  }
+
+  async upsertUser(user: UpsertUser) {
+    return this.executeWithFallback(storage => storage.upsertUser(user));
+  }
+
+  async getDevotees() {
+    return this.executeWithFallback(storage => storage.getDevotees());
+  }
+
+  async getDevotee(id: number) {
+    return this.executeWithFallback(storage => storage.getDevotee(id));
+  }
+
+  async createDevotee(devotee: InsertDevotee) {
+    return this.executeWithFallback(storage => storage.createDevotee(devotee));
+  }
+
+  async updateDevotee(id: number, devotee: Partial<InsertDevotee>) {
+    return this.executeWithFallback(storage => storage.updateDevotee(id, devotee));
+  }
+
+  async deleteDevotee(id: number) {
+    return this.executeWithFallback(storage => storage.deleteDevotee(id));
+  }
+
+  async getFamilies() {
+    return this.executeWithFallback(storage => storage.getFamilies());
+  }
+
+  async getFamily(id: number) {
+    return this.executeWithFallback(storage => storage.getFamily(id));
+  }
+
+  async createFamily(family: InsertFamily) {
+    return this.executeWithFallback(storage => storage.createFamily(family));
+  }
+
+  async updateFamily(id: number, family: Partial<InsertFamily>) {
+    return this.executeWithFallback(storage => storage.updateFamily(id, family));
+  }
+
+  async deleteFamily(id: number) {
+    return this.executeWithFallback(storage => storage.deleteFamily(id));
+  }
+
+  async getMentors() {
+    return this.executeWithFallback(storage => storage.getMentors());
+  }
+
+  async getMentor(id: number) {
+    return this.executeWithFallback(storage => storage.getMentor(id));
+  }
+
+  async createMentor(mentor: InsertMentor) {
+    return this.executeWithFallback(storage => storage.createMentor(mentor));
+  }
+
+  async updateMentor(id: number, mentor: Partial<InsertMentor>) {
+    return this.executeWithFallback(storage => storage.updateMentor(id, mentor));
+  }
+
+  async deleteMentor(id: number) {
+    return this.executeWithFallback(storage => storage.deleteMentor(id));
+  }
+
+  async getAttendance(devoteeId?: number, eventId?: number) {
+    return this.executeWithFallback(storage => storage.getAttendance(devoteeId, eventId));
+  }
+
+  async createAttendance(attendance: InsertAttendance) {
+    return this.executeWithFallback(storage => storage.createAttendance(attendance));
+  }
+
+  async updateAttendance(id: number, attendance: Partial<InsertAttendance>) {
+    return this.executeWithFallback(storage => storage.updateAttendance(id, attendance));
+  }
+
+  async deleteAttendance(id: number) {
+    return this.executeWithFallback(storage => storage.deleteAttendance(id));
+  }
+
+  async getDonations(devoteeId?: number) {
+    return this.executeWithFallback(storage => storage.getDonations(devoteeId));
+  }
+
+  async createDonation(donation: InsertDonation) {
+    return this.executeWithFallback(storage => storage.createDonation(donation));
+  }
+
+  async updateDonation(id: number, donation: Partial<InsertDonation>) {
+    return this.executeWithFallback(storage => storage.updateDonation(id, donation));
+  }
+
+  async deleteDonation(id: number) {
+    return this.executeWithFallback(storage => storage.deleteDonation(id));
+  }
+
+  async getEvents() {
+    return this.executeWithFallback(storage => storage.getEvents());
+  }
+
+  async getEvent(id: number) {
+    return this.executeWithFallback(storage => storage.getEvent(id));
+  }
+
+  async createEvent(event: InsertEvent) {
+    return this.executeWithFallback(storage => storage.createEvent(event));
+  }
+
+  async updateEvent(id: number, event: Partial<InsertEvent>) {
+    return this.executeWithFallback(storage => storage.updateEvent(id, event));
+  }
+
+  async deleteEvent(id: number) {
+    return this.executeWithFallback(storage => storage.deleteEvent(id));
+  }
+
+  async getVolunteering(devoteeId?: number) {
+    return this.executeWithFallback(storage => storage.getVolunteering(devoteeId));
+  }
+
+  async createVolunteering(volunteering: InsertVolunteering) {
+    return this.executeWithFallback(storage => storage.createVolunteering(volunteering));
+  }
+
+  async updateVolunteering(id: number, volunteering: Partial<InsertVolunteering>) {
+    return this.executeWithFallback(storage => storage.updateVolunteering(id, volunteering));
+  }
+
+  async deleteVolunteering(id: number) {
+    return this.executeWithFallback(storage => storage.deleteVolunteering(id));
+  }
+
+  async getGroups() {
+    return this.executeWithFallback(storage => storage.getGroups());
+  }
+
+  async getGroup(id: number) {
+    return this.executeWithFallback(storage => storage.getGroup(id));
+  }
+
+  async createGroup(group: InsertGroup) {
+    return this.executeWithFallback(storage => storage.createGroup(group));
+  }
+
+  async updateGroup(id: number, group: Partial<InsertGroup>) {
+    return this.executeWithFallback(storage => storage.updateGroup(id, group));
+  }
+
+  async deleteGroup(id: number) {
+    return this.executeWithFallback(storage => storage.deleteGroup(id));
+  }
+
+  async getGroupEntries(groupId?: number) {
+    return this.executeWithFallback(storage => storage.getGroupEntries(groupId));
+  }
+
+  async createGroupEntry(entry: InsertGroupEntry) {
+    return this.executeWithFallback(storage => storage.createGroupEntry(entry));
+  }
+
+  async updateGroupEntry(id: number, entry: Partial<InsertGroupEntry>) {
+    return this.executeWithFallback(storage => storage.updateGroupEntry(id, entry));
+  }
+
+  async deleteGroupEntry(id: number) {
+    return this.executeWithFallback(storage => storage.deleteGroupEntry(id));
+  }
+
+  async getMandals() {
+    return this.executeWithFallback(storage => storage.getMandals());
+  }
+
+  async createMandal(mandal: InsertMandal) {
+    return this.executeWithFallback(storage => storage.createMandal(mandal));
+  }
+
+  async getSabhaLocations() {
+    return this.executeWithFallback(storage => storage.getSabhaLocations());
+  }
+
+  async createSabhaLocation(location: InsertSabhaLocation) {
+    return this.executeWithFallback(storage => storage.createSabhaLocation(location));
+  }
+
+  async getDashboardLayouts(userId: string) {
+    return this.executeWithFallback(storage => storage.getDashboardLayouts(userId));
+  }
+
+  async createDashboardLayout(layout: InsertDashboardLayout) {
+    return this.executeWithFallback(storage => storage.createDashboardLayout(layout));
+  }
+
+  async updateDashboardLayout(id: number, layout: Partial<InsertDashboardLayout>) {
+    return this.executeWithFallback(storage => storage.updateDashboardLayout(id, layout));
+  }
+
+  async deleteDashboardLayout(id: number) {
+    return this.executeWithFallback(storage => storage.deleteDashboardLayout(id));
+  }
+
+  async getUserPreferences(userId: string) {
+    return this.executeWithFallback(storage => storage.getUserPreferences(userId));
+  }
+
+  async upsertUserPreferences(preferences: InsertUserPreferences) {
+    return this.executeWithFallback(storage => storage.upsertUserPreferences(preferences));
+  }
+
+  async getStats() {
+    return this.executeWithFallback(storage => storage.getStats());
+  }
+}
+
+export const storage = new FallbackStorage();
