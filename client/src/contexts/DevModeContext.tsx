@@ -43,16 +43,17 @@ export function DevModeProvider({ children }: { children: React.ReactNode }) {
     <DevModeContext.Provider value={{ isDevMode, activateDevMode, deactivateDevMode, showDevLogin }}>
       {children}
 
-      {/* Dev Mode Active Banner */}
+      {/* Dev Mode Active Banner - thin */}
       {isDevMode && (
-        <div className="fixed top-0 left-0 right-0 z-50 bg-yellow-500 text-black flex items-center justify-between px-4 py-2 text-sm font-medium shadow-lg">
-          <div className="flex items-center gap-2">
-            <Code2 className="w-4 h-4" />
-            <span>DEVELOPER MODE ACTIVE — Full edit access enabled</span>
-            <Badge className="bg-black text-yellow-400 ml-2">DevelopZ</Badge>
+        <div className="fixed top-0 left-0 right-0 z-50 bg-yellow-500 text-black flex items-center justify-between px-3 py-0.5 text-xs font-medium shadow">
+          <div className="flex items-center gap-1.5">
+            <Code2 className="w-3 h-3" />
+            <span className="font-semibold">DEVELOPER MODE</span>
+            <span className="opacity-70">— Full system edit access enabled</span>
+            <Badge className="bg-black text-yellow-400 text-xs px-1.5 py-0 ml-1">DevelopZ</Badge>
           </div>
-          <Button size="sm" variant="outline" className="border-black text-black hover:bg-black/10" onClick={() => setIsDevMode(false)}>
-            <X className="w-3 h-3 mr-1" /> Exit Dev Mode
+          <Button size="sm" variant="ghost" className="h-5 px-2 text-xs text-black hover:bg-black/10 border border-black/30" onClick={() => setIsDevMode(false)}>
+            <X className="w-2.5 h-2.5 mr-1" /> Exit
           </Button>
         </div>
       )}

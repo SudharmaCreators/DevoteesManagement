@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { MemoryStorage } from "./memoryStorage";
 // import { setupAuth, isAuthenticated } from "./replitAuth";
 
 // Mock authentication for development
@@ -518,6 +519,248 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error fetching stats:", error);
       res.status(500).json({ message: "Failed to fetch stats" });
     }
+  });
+
+  app.get('/api/analytics', isAuthenticated, async (req, res) => {
+    try {
+      const stats = await storage.getStats();
+      const ms = (storage as any).memStore as MemoryStorage;
+      const donationTrends = ms.getDonationTrends ? ms.getDonationTrends() : [];
+      const attendanceTrends = ms.getAttendanceTrends ? ms.getAttendanceTrends() : [];
+      const volunteeringStats = ms.getVolunteeringStats ? ms.getVolunteeringStats() : [];
+      res.json({ stats, donationTrends, attendanceTrends, volunteeringStats });
+    } catch (error) {
+      console.error("Error fetching analytics:", error);
+      res.status(500).json({ message: "Failed to fetch analytics" });
+    }
+  });
+
+  // Extended family routes
+  app.put('/api/families/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validatedData = insertFamilySchema.partial().parse(req.body);
+      const family = await storage.updateFamily(id, validatedData);
+      res.json(family);
+    } catch (error) {
+      console.error("Error updating family:", error);
+      res.status(400).json({ message: "Failed to update family" });
+    }
+  });
+
+  app.delete('/api/families/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteFamily(id);
+      res.status(success ? 204 : 404).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete family" });
+    }
+  });
+
+  // Extended mentor routes
+  app.get('/api/mentors/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const mentor = await storage.getMentor(id);
+      if (!mentor) return res.status(404).json({ message: "Mentor not found" });
+      res.json(mentor);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch mentor" });
+    }
+  });
+
+  app.put('/api/mentors/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const mentor = await storage.updateMentor(id, req.body);
+      res.json(mentor);
+    } catch (error) {
+      console.error("Error updating mentor:", error);
+      res.status(400).json({ message: "Failed to update mentor" });
+    }
+  });
+
+  app.delete('/api/mentors/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteMentor(id);
+      res.status(success ? 204 : 404).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete mentor" });
+    }
+  });
+
+  // Extended donation routes
+  app.put('/api/donations/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const donation = await storage.updateDonation(id, req.body);
+      res.json(donation);
+    } catch (error) {
+      console.error("Error updating donation:", error);
+      res.status(400).json({ message: "Failed to update donation" });
+    }
+  });
+
+  app.delete('/api/donations/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteDonation(id);
+      res.status(success ? 204 : 404).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete donation" });
+    }
+  });
+
+  // Extended volunteering routes
+  app.put('/api/volunteering/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const vol = await storage.updateVolunteering(id, req.body);
+      res.json(vol);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update volunteering record" });
+    }
+  });
+
+  app.delete('/api/volunteering/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteVolunteering(id);
+      res.status(success ? 204 : 404).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete volunteering record" });
+    }
+  });
+
+  // Attendance update/delete
+  app.put('/api/attendance/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const att = await storage.updateAttendance(id, req.body);
+      res.json(att);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update attendance" });
+    }
+  });
+
+  app.delete('/api/attendance/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteAttendance(id);
+      res.status(success ? 204 : 404).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete attendance" });
+    }
+  });
+
+  // Notifications routes
+  app.get('/api/notifications', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub || 'dev-user-1';
+      const ms = (storage as any).memStore as MemoryStorage;
+      const notifications = ms.getNotifications ? ms.getNotifications(userId) : [];
+      res.json(notifications);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
+  app.post('/api/notifications', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub || 'dev-user-1';
+      const ms = (storage as any).memStore as MemoryStorage;
+      const notification = ms.createNotification ? ms.createNotification({ ...req.body, userId }) : null;
+      res.status(201).json(notification);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create notification" });
+    }
+  });
+
+  app.put('/api/notifications/:id/read', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const ms = (storage as any).memStore as MemoryStorage;
+      const notification = ms.markNotificationRead ? ms.markNotificationRead(id) : null;
+      res.json(notification);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to mark notification as read" });
+    }
+  });
+
+  app.put('/api/notifications/read-all', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub || 'dev-user-1';
+      const ms = (storage as any).memStore as MemoryStorage;
+      if (ms.markAllNotificationsRead) ms.markAllNotificationsRead(userId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to mark all notifications as read" });
+    }
+  });
+
+  app.delete('/api/notifications/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const ms = (storage as any).memStore as MemoryStorage;
+      const success = ms.deleteNotification ? ms.deleteNotification(id) : false;
+      res.status(success ? 204 : 404).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete notification" });
+    }
+  });
+
+  // Users management routes (admin/manager)
+  app.get('/api/users', isAuthenticated, async (req, res) => {
+    try {
+      const ms = (storage as any).memStore as MemoryStorage;
+      const users = ms.getAllUsers ? ms.getAllUsers() : [];
+      res.json(users);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.put('/api/users/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = req.params.id;
+      const user = await storage.upsertUser({ id, ...req.body });
+      res.json(user);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update user" });
+    }
+  });
+
+  // Dev mode config (store/retrieve application config)
+  const devConfig: Record<string, any> = {
+    appName: "Madhav Parivar",
+    appSubtitle: "Database System",
+    sidebarItems: [
+      { name: "Dashboard", href: "/", icon: "Home" },
+      { name: "Devotees", href: "/devotees", icon: "Users" },
+      { name: "Families", href: "/families", icon: "Building" },
+      { name: "Mentors", href: "/mentors", icon: "GraduationCap" },
+      { name: "Attendance", href: "/attendance", icon: "Calendar" },
+      { name: "Donations", href: "/donations", icon: "Heart" },
+      { name: "Events", href: "/events", icon: "CalendarDays" },
+      { name: "Volunteering", href: "/volunteering", icon: "HandHeart" },
+      { name: "Analytics", href: "/analytics", icon: "BarChart3" },
+      { name: "Dashboard Designer", href: "/dashboard-designer", icon: "PanelTop" },
+      { name: "ID Card Generator", href: "/id-cards", icon: "CreditCard" },
+      { name: "Settings", href: "/settings", icon: "Settings" },
+    ],
+    theme: "default",
+    customCSS: "",
+  };
+
+  app.get('/api/dev-config', isAuthenticated, async (req, res) => {
+    res.json(devConfig);
+  });
+
+  app.put('/api/dev-config', isAuthenticated, async (req, res) => {
+    Object.assign(devConfig, req.body);
+    res.json(devConfig);
   });
 
   const httpServer = createServer(app);
