@@ -22,7 +22,9 @@ import Volunteering from "@/pages/Volunteering";
 import Analytics from "@/pages/Analytics";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/not-found";
-import IDCardGenerator from "@/pages/IDCardGenerator"; // Import the IDCardGenerator page
+import IDCardGenerator from "@/pages/IDCardGenerator";
+import DevoteeProfilePage from "@/pages/DevoteeProfilePage";
+import { DevModeProvider } from "@/contexts/DevModeContext";
 
 function AppContent() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -64,7 +66,8 @@ function AppContent() {
           <Route path="/dashboard-designer">
             <Dashboard />
           </Route>
-          <Route path="/id-cards" component={IDCardGenerator} /> {/* Added ID Card Generator route */}
+          <Route path="/devotees/:id" component={DevoteeProfilePage} />
+          <Route path="/id-cards" component={IDCardGenerator} />
           <Route path="/settings" component={Settings} />
           <Route component={NotFound} />
         </Switch>
@@ -78,12 +81,14 @@ function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
-          <DashboardProvider>
-            <TooltipProvider>
-              <Toaster />
-              <AppContent />
-            </TooltipProvider>
-          </DashboardProvider>
+          <DevModeProvider>
+            <DashboardProvider>
+              <TooltipProvider>
+                <Toaster />
+                <AppContent />
+              </TooltipProvider>
+            </DashboardProvider>
+          </DevModeProvider>
         </ThemeProvider>
       </QueryClientProvider>
     </ErrorBoundary>

@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/hooks/useAuth";
+import { useDevMode } from "@/contexts/DevModeContext";
 import { ThemeSelector } from "@/components/Common/ThemeSelector";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -18,7 +19,8 @@ import {
   Settings, 
   PanelTop,
   CreditCard,
-  LogOut
+  LogOut,
+  Code2
 } from "lucide-react";
 
 const navigation = [
@@ -40,6 +42,7 @@ export function Sidebar() {
   const [location] = useLocation();
   const { theme } = useTheme();
   const { user } = useAuth();
+  const { isDevMode, showDevLogin, deactivateDevMode } = useDevMode();
 
   const getNavItemClass = (href: string) => {
     const isActive = location === href;
@@ -86,6 +89,31 @@ export function Sidebar() {
           );
         })}
       </nav>
+
+      {/* Developer Mode Toggle */}
+      <div className="px-4 pb-3">
+        {isDevMode ? (
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full border-yellow-400 text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20"
+            onClick={deactivateDevMode}
+          >
+            <Code2 className="w-4 h-4 mr-2" />
+            Exit Dev Mode
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full text-muted-foreground hover:text-foreground"
+            onClick={showDevLogin}
+          >
+            <Code2 className="w-4 h-4 mr-2" />
+            Developer Mode
+          </Button>
+        )}
+      </div>
 
       {/* User Profile */}
       <div className="p-4 border-t border-border">
