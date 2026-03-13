@@ -124,11 +124,43 @@ This is a comprehensive devotional management system built for managing spiritua
 - Database connections pooled for performance
 - Session storage in PostgreSQL for scalability
 
+## Key Features
+
+### Developer Mode
+- Activated via the "Developer Mode" button in the sidebar using code **DevelopZ**
+- Shows a persistent yellow banner when active
+- Grants full system configuration access
+
+### Devotee Profile Page (/devotees/:id)
+- Full-page profile with large centered avatar (25% screen width)
+- Quick stats: Attendance %, Total Donated, Total Seva Hours
+- Clickable family member tiles (navigate between profiles)
+- 4 tabs: Details, Attendance (BarChart), Donations (AreaChart + PieChart), Volunteering (BarChart)
+
+### Events Management (/events)
+- Card-based layout with event images (URL-based)
+- Event type badges: satsang, festival, workshop, meeting
+- Archive/unarchive individual events
+- Auto-Archive Past button for bulk archiving
+- Create/edit events with image preview
+
+### Dashboard (/dashboard)
+- Upcoming Events section above the attendance chart
+- Shows next 5 events sorted by date with countdown (Today/Tomorrow/In X days)
+- Event images, type, location, and capacity shown
+
+### Storage
+- Uses in-memory storage (MemoryStorage) — no PostgreSQL required
+- Seed data: 10 devotees across 3 families, 6 events, 12 months of attendance/donation/volunteering history
+
 ## Changelog
 
 ```
 Changelog:
 - July 06, 2025. Initial setup
+- March 13, 2026. Major feature additions: Developer Mode, Devotee Full Profile Page with analytics charts,
+  Upcoming Events on Dashboard, Events image upload and archiving, Fixed Select.Item empty value bugs,
+  Updated to in-memory storage with rich seed data
 ```
 
 ## User Preferences

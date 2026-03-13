@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,7 @@ export function DevoteeList() {
   const [selectedDevotee, setSelectedDevotee] = useState<Devotee | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [, navigate] = useLocation();
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -75,8 +77,8 @@ export function DevoteeList() {
       devotee.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       devotee.devoteeId?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesSpiritual = !filterSpiritual || devotee.spiritualLevel === filterSpiritual;
-    const matchesStatus = !filterStatus || 
+    const matchesSpiritual = !filterSpiritual || filterSpiritual === "all-levels" || devotee.spiritualLevel === filterSpiritual;
+    const matchesStatus = !filterStatus || filterStatus === "all-status" ||
       (filterStatus === "active" && devotee.isActive) ||
       (filterStatus === "inactive" && !devotee.isActive);
     
@@ -89,8 +91,7 @@ export function DevoteeList() {
   };
 
   const handleView = (devotee: Devotee) => {
-    setSelectedDevotee(devotee);
-    setIsProfileOpen(true);
+    navigate(`/devotees/${devotee.id}`);
   };
 
   const handleDelete = (id: number) => {
@@ -148,7 +149,7 @@ export function DevoteeList() {
                 <SelectValue placeholder="Spiritual Level" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Levels</SelectItem>
+                <SelectItem value="all-levels">All Levels</SelectItem>
                 {spiritualLevels.map(level => (
                   <SelectItem key={level} value={level}>{level}</SelectItem>
                 ))}
@@ -160,7 +161,7 @@ export function DevoteeList() {
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All</SelectItem>
+                <SelectItem value="all-status">All</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="inactive">Inactive</SelectItem>
               </SelectContent>

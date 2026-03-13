@@ -46,7 +46,7 @@ export default function IDCardGenerator() {
       devotee.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       devotee.devoteeId?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesGroup = !filterGroup || devotee.groupId === parseInt(filterGroup);
+    const matchesGroup = !filterGroup || filterGroup === "all-groups" || devotee.groupId === parseInt(filterGroup);
     
     return matchesSearch && matchesGroup;
   });
@@ -132,7 +132,7 @@ export default function IDCardGenerator() {
                       <SelectValue placeholder="All Groups" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Groups</SelectItem>
+                      <SelectItem value="all-groups">All Groups</SelectItem>
                       {groups.map((group: any) => (
                         <SelectItem key={group.id} value={group.id.toString()}>
                           {group.groupName}

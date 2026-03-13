@@ -119,6 +119,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Devotee family members
+  app.get('/api/devotees/:id/family', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const devotee = await storage.getDevotee(id);
+      if (!devotee || !devotee.familyId) return res.json([]);
+      const members = await (storage as any).getDevoteesByFamily(devotee.familyId);
+      res.json(members.filter((m: any) => m.id !== id));
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch family members" });
+    }
+  });
+
+  // Devotee analytics (attendance, donations, volunteering)
+  app.get('/api/devotees/:id/analytics', async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const [attendance, donations, volunteering] = await Promise.all([
+        storage.getAttendance(id),
+        storage.getDonations(id),
+        storage.getVolunteering(id),
+      ]);
+      res.json({ attendance, donations, volunteering });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch analytics" });
+    }
+  });
+
   // Family routes
   app.get('/api/families', isAuthenticated, async (req, res) => {
     try {
@@ -229,15 +257,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/events', isAuthenticated, async (req: any, res) => {
     try {
-      const validatedData = insertEventSchema.parse({
-        ...req.body,
-        organizerId: req.user.claims.sub,
-      });
+      const validatedData = insertEventSchema.parse(req.body);
       const event = await storage.createEvent(validatedData);
       res.status(201).json(event);
     } catch (error) {
       console.error("Error creating event:", error);
       res.status(400).json({ message: "Invalid event data" });
+    }
+  });
+
+  app.put('/api/events/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validatedData = insertEventSchema.partial().parse(req.body);
+      const event = await storage.updateEvent(id, validatedData);
+      res.json(event);
+    } catch (error) {
+      console.error("Error updating event:", error);
+      res.status(400).json({ message: "Invalid event data" });
+    }
+  });
+
+  app.delete('/api/events/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteEvent(id);
+      res.status(success ? 204 : 404).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete event" });
+    }
+  });
+
+  app.post('/api/events/:id/archive', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const event = await (storage as any).archiveEvent(id);
+      if (!event) return res.status(404).json({ message: "Event not found" });
+      res.json(event);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to archive event" });
+    }
+  });
+
+  app.post('/api/events/:id/unarchive', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const event = await storage.updateEvent(id, { isArchived: false, archivedAt: null } as any);
+      res.json(event);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to unarchive event" });
+    }
+  });
+
+  app.post('/api/events/auto-archive', isAuthenticated, async (req, res) => {
+    try {
+      const count = await (storage as any).autoArchivePastEvents();
+      res.json({ archived: count });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to auto-archive events" });
     }
   });
 

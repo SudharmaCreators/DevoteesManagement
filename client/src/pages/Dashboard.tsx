@@ -3,20 +3,14 @@ import { Header } from "@/components/Layout/Header";
 import { StatsCard } from "@/components/Dashboard/StatsCard";
 import { AttendanceChart } from "@/components/Dashboard/AttendanceChart";
 import { RecentActivities } from "@/components/Dashboard/RecentActivities";
-import { DevoteeProfile } from "@/components/Devotees/DevoteeProfile";
 import { GroupManager } from "@/components/Groups/GroupManager";
-import { DashboardDesigner } from "@/components/Dashboard/DashboardDesigner";
-import { IDCardGenerator } from "@/components/IDCard/IDCardGenerator";
+import { UpcomingEvents } from "@/components/Dashboard/UpcomingEvents";
 import { LoadingSpinner } from "@/components/Common/LoadingSpinner";
 import { Users, Building, Heart, Calendar } from "lucide-react";
 
 export default function Dashboard() {
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["/api/stats"],
-  });
-
-  const { data: devotees } = useQuery({
-    queryKey: ["/api/devotees"],
   });
 
   const { data: groups } = useQuery({
@@ -35,21 +29,15 @@ export default function Dashboard() {
     onAddGroup: () => console.log("Add group"),
     onEditGroup: (group: any) => console.log("Edit group", group),
     onCreateWhatsAppGroup: (group: any) => {
-      if (group.whatsappLink) {
-        window.open(group.whatsappLink, '_blank');
-      } else {
-        alert(`Create WhatsApp group for ${group.name}`);
-      }
+      if (group.whatsappLink) window.open(group.whatsappLink, '_blank');
+      else alert(`Create WhatsApp group for ${group.name}`);
     },
     onCreateTelegramGroup: (group: any) => {
-      if (group.telegramLink) {
-        window.open(group.telegramLink, '_blank');
-      } else {
-        alert(`Create Telegram group for ${group.name}`);
-      }
+      if (group.telegramLink) window.open(group.telegramLink, '_blank');
+      else alert(`Create Telegram group for ${group.name}`);
     },
     onSendBulkMessage: (group: any) => {
-      alert(`Send bulk message to ${group.name} (${group.currentMembers} members)`);
+      alert(`Send bulk message to ${group.name}`);
     }
   };
 
@@ -57,7 +45,7 @@ export default function Dashboard() {
     <div className="flex-1 flex flex-col overflow-hidden">
       <Header 
         title="Dashboard" 
-        subtitle="Welcome back, Admin User" 
+        subtitle="Madhav Parivar — Devotional Management System" 
       />
       
       <main className="flex-1 overflow-y-auto p-6 space-y-8">
@@ -87,47 +75,28 @@ export default function Dashboard() {
           <StatsCard
             title="Avg. Attendance"
             value={`${stats?.avgAttendance || 0}%`}
-            change={{ value: "-2%", trend: "down" }}
+            change={{ value: "+5%", trend: "up" }}
             icon={Calendar}
             color="from-yellow-500 to-yellow-600"
           />
         </div>
 
-        {/* Main Dashboard Grid */}
+        {/* Upcoming Events — shown prominently above the attendance section */}
+        <UpcomingEvents />
+
+        {/* Attendance + Recent Activities */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <AttendanceChart />
           <RecentActivities />
         </div>
 
-        {/* Devotee Management Section */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          {devotees && devotees.length > 0 && (
-            <DevoteeProfile 
-              devotee={devotees[0]} 
-              onEdit={() => console.log("Edit devotee")}
-            />
-          )}
-          
-          {groups && (
-            <GroupManager 
-              groups={groups}
-              {...handleGroupActions}
-            />
-          )}
-        </div>
-
-        {/* Dashboard Designer Section */}
-        <DashboardDesigner />
-
-        {/* ID Card Generation */}
-        <IDCardGenerator 
-          devotees={devotees || []} 
-          onGenerate={(settings) => {
-            console.log("Generating ID cards with settings:", settings);
-            // In a real implementation, this would call an API to generate PDFs
-            alert(`Generating ID cards for ${devotees?.length || 0} devotees`);
-          }}
-        />
+        {/* Groups */}
+        {groups && (
+          <GroupManager 
+            groups={groups}
+            {...handleGroupActions}
+          />
+        )}
       </main>
     </div>
   );

@@ -68,88 +68,165 @@ export class MemoryStorage implements IStorage {
   }
 
   private initializeSampleData() {
-    // Add some sample data for demonstration
     const now = new Date();
-    
-    // Sample groups
+    const d = (daysAgo: number) => { const dt = new Date(now); dt.setDate(dt.getDate() - daysAgo); return dt; };
+    const future = (daysAhead: number) => { const dt = new Date(now); dt.setDate(dt.getDate() + daysAhead); return dt; };
+
+    // ─── FAMILIES ────────────────────────────────────────────────────
+    const sampleFamilies: Family[] = [
+      { id: 1, familyName: "Sharma Family", headOfFamily: 1, address: "42 Tulsi Nagar", city: "Ahmedabad", state: "Gujarat", pincode: "380001", country: "India", phone: "9876543210", email: "sharma@email.com", totalMembers: 4, emergencyContact: "Ramesh Sharma", notes: null, isActive: true, createdAt: d(365), updatedAt: now },
+      { id: 2, familyName: "Patel Family", headOfFamily: 5, address: "17 Krishna Lane", city: "Surat", state: "Gujarat", pincode: "395001", country: "India", phone: "9876543220", email: "patel@email.com", totalMembers: 3, emergencyContact: "Suresh Patel", notes: null, isActive: true, createdAt: d(300), updatedAt: now },
+      { id: 3, familyName: "Desai Family", headOfFamily: 8, address: "5 Radha Niwas", city: "Vadodara", state: "Gujarat", pincode: "390001", country: "India", phone: "9876543230", email: "desai@email.com", totalMembers: 3, emergencyContact: "Nilesh Desai", notes: null, isActive: true, createdAt: d(250), updatedAt: now },
+    ];
+    sampleFamilies.forEach(f => { this.families.set(f.id, f); this.counters.families = Math.max(this.counters.families, f.id + 1); });
+
+    // ─── DEVOTEES ─────────────────────────────────────────────────────
+    const sampleDevotees: Devotee[] = [
+      { id: 1, devoteeId: "MP-001", firstName: "Ramesh", lastName: "Sharma", email: "ramesh.sharma@email.com", phone: "9876543210", whatsappNumber: "9876543210", dateOfBirth: new Date("1975-03-15"), gender: "Male", address: "42 Tulsi Nagar", city: "Ahmedabad", state: "Gujarat", pincode: "380001", country: "India", occupation: "Engineer", spiritualLevel: "Advanced", joinDate: d(1200), mentorId: 1, familyId: 1, profileImage: "https://api.dicebear.com/7.x/avataaars/svg?seed=Ramesh", notes: "Very dedicated devotee", specialSkills: "Kirtans, Teaching", previousExperience: "5 years in seva", emergencyContact: "Sunita Sharma", emergencyPhone: "9876543211", medicalConditions: null, dietaryPreferences: "Vegetarian", isActive: true, createdAt: d(1200), updatedAt: now },
+      { id: 2, devoteeId: "MP-002", firstName: "Sunita", lastName: "Sharma", email: "sunita.sharma@email.com", phone: "9876543211", whatsappNumber: "9876543211", dateOfBirth: new Date("1978-07-22"), gender: "Female", address: "42 Tulsi Nagar", city: "Ahmedabad", state: "Gujarat", pincode: "380001", country: "India", occupation: "Teacher", spiritualLevel: "Intermediate", joinDate: d(1100), mentorId: 1, familyId: 1, profileImage: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sunita", notes: "Leads women's satsang", specialSkills: "Bhajan singing", previousExperience: "3 years", emergencyContact: "Ramesh Sharma", emergencyPhone: "9876543210", medicalConditions: null, dietaryPreferences: "Vegan", isActive: true, createdAt: d(1100), updatedAt: now },
+      { id: 3, devoteeId: "MP-003", firstName: "Arjun", lastName: "Sharma", email: "arjun.sharma@email.com", phone: "9876543212", whatsappNumber: "9876543212", dateOfBirth: new Date("2000-11-05"), gender: "Male", address: "42 Tulsi Nagar", city: "Ahmedabad", state: "Gujarat", pincode: "380001", country: "India", occupation: "Student", spiritualLevel: "Beginner", joinDate: d(400), mentorId: null, familyId: 1, profileImage: "https://api.dicebear.com/7.x/avataaars/svg?seed=Arjun", notes: "Youth leader", specialSkills: "Mridanga", previousExperience: null, emergencyContact: "Ramesh Sharma", emergencyPhone: "9876543210", medicalConditions: null, dietaryPreferences: "Vegetarian", isActive: true, createdAt: d(400), updatedAt: now },
+      { id: 4, devoteeId: "MP-004", firstName: "Priya", lastName: "Sharma", email: "priya.sharma@email.com", phone: "9876543213", whatsappNumber: "9876543213", dateOfBirth: new Date("2003-05-18"), gender: "Female", address: "42 Tulsi Nagar", city: "Ahmedabad", state: "Gujarat", pincode: "380001", country: "India", occupation: "Student", spiritualLevel: "Beginner", joinDate: d(300), mentorId: null, familyId: 1, profileImage: "https://api.dicebear.com/7.x/avataaars/svg?seed=Priya", notes: null, specialSkills: "Art and crafts", previousExperience: null, emergencyContact: "Sunita Sharma", emergencyPhone: "9876543211", medicalConditions: null, dietaryPreferences: "Vegetarian", isActive: true, createdAt: d(300), updatedAt: now },
+      { id: 5, devoteeId: "MP-005", firstName: "Suresh", lastName: "Patel", email: "suresh.patel@email.com", phone: "9876543220", whatsappNumber: "9876543220", dateOfBirth: new Date("1968-09-30"), gender: "Male", address: "17 Krishna Lane", city: "Surat", state: "Gujarat", pincode: "395001", country: "India", occupation: "Businessman", spiritualLevel: "Teacher", joinDate: d(1500), mentorId: null, familyId: 2, profileImage: "https://api.dicebear.com/7.x/avataaars/svg?seed=Suresh", notes: "Major donor and organizer", specialSkills: "Event management, Finance", previousExperience: "10 years in seva", emergencyContact: "Meena Patel", emergencyPhone: "9876543221", medicalConditions: "Diabetes - diet controlled", dietaryPreferences: "Vegan", isActive: true, createdAt: d(1500), updatedAt: now },
+      { id: 6, devoteeId: "MP-006", firstName: "Meena", lastName: "Patel", email: "meena.patel@email.com", phone: "9876543221", whatsappNumber: "9876543221", dateOfBirth: new Date("1972-02-14"), gender: "Female", address: "17 Krishna Lane", city: "Surat", state: "Gujarat", pincode: "395001", country: "India", occupation: "Doctor", spiritualLevel: "Advanced", joinDate: d(1400), mentorId: 1, familyId: 2, profileImage: "https://api.dicebear.com/7.x/avataaars/svg?seed=Meena", notes: "Provides medical support at events", specialSkills: "Medical aid, Counseling", previousExperience: "8 years", emergencyContact: "Suresh Patel", emergencyPhone: "9876543220", medicalConditions: null, dietaryPreferences: "Vegetarian", isActive: true, createdAt: d(1400), updatedAt: now },
+      { id: 7, devoteeId: "MP-007", firstName: "Rohan", lastName: "Patel", email: "rohan.patel@email.com", phone: "9876543222", whatsappNumber: "9876543222", dateOfBirth: new Date("1998-08-20"), gender: "Male", address: "17 Krishna Lane", city: "Surat", state: "Gujarat", pincode: "395001", country: "India", occupation: "IT Professional", spiritualLevel: "Intermediate", joinDate: d(600), mentorId: null, familyId: 2, profileImage: "https://api.dicebear.com/7.x/avataaars/svg?seed=Rohan", notes: "Manages digital initiatives", specialSkills: "Technology, Web Design", previousExperience: "2 years", emergencyContact: "Suresh Patel", emergencyPhone: "9876543220", medicalConditions: null, dietaryPreferences: "Vegetarian", isActive: true, createdAt: d(600), updatedAt: now },
+      { id: 8, devoteeId: "MP-008", firstName: "Nilesh", lastName: "Desai", email: "nilesh.desai@email.com", phone: "9876543230", whatsappNumber: "9876543230", dateOfBirth: new Date("1970-12-10"), gender: "Male", address: "5 Radha Niwas", city: "Vadodara", state: "Gujarat", pincode: "390001", country: "India", occupation: "Professor", spiritualLevel: "Mentor", joinDate: d(2000), mentorId: null, familyId: 3, profileImage: "https://api.dicebear.com/7.x/avataaars/svg?seed=Nilesh", notes: "Senior mentor, teaches Bhagavad Gita", specialSkills: "Sanskrit, Philosophy, Teaching", previousExperience: "15 years", emergencyContact: "Kavita Desai", emergencyPhone: "9876543231", medicalConditions: null, dietaryPreferences: "Vegetarian", isActive: true, createdAt: d(2000), updatedAt: now },
+      { id: 9, devoteeId: "MP-009", firstName: "Kavita", lastName: "Desai", email: "kavita.desai@email.com", phone: "9876543231", whatsappNumber: "9876543231", dateOfBirth: new Date("1974-04-25"), gender: "Female", address: "5 Radha Niwas", city: "Vadodara", state: "Gujarat", pincode: "390001", country: "India", occupation: "Homemaker", spiritualLevel: "Advanced", joinDate: d(1800), mentorId: 1, familyId: 3, profileImage: "https://api.dicebear.com/7.x/avataaars/svg?seed=Kavita", notes: "Organizes prasad distribution", specialSkills: "Cooking, Event decoration", previousExperience: "12 years", emergencyContact: "Nilesh Desai", emergencyPhone: "9876543230", medicalConditions: null, dietaryPreferences: "Vegetarian", isActive: true, createdAt: d(1800), updatedAt: now },
+      { id: 10, devoteeId: "MP-010", firstName: "Tanvi", lastName: "Desai", email: "tanvi.desai@email.com", phone: "9876543232", whatsappNumber: "9876543232", dateOfBirth: new Date("2002-01-30"), gender: "Female", address: "5 Radha Niwas", city: "Vadodara", state: "Gujarat", pincode: "390001", country: "India", occupation: "Student", spiritualLevel: "Beginner", joinDate: d(200), mentorId: null, familyId: 3, profileImage: "https://api.dicebear.com/7.x/avataaars/svg?seed=Tanvi", notes: null, specialSkills: "Dance, Music", previousExperience: null, emergencyContact: "Kavita Desai", emergencyPhone: "9876543231", medicalConditions: null, dietaryPreferences: "Vegetarian", isActive: true, createdAt: d(200), updatedAt: now },
+    ];
+    sampleDevotees.forEach(dv => { this.devotees.set(dv.id, dv); this.counters.devotees = Math.max(this.counters.devotees, dv.id + 1); });
+
+    // ─── GROUPS ───────────────────────────────────────────────────────
     const sampleGroups: Group[] = [
-      {
-        id: 1,
-        groupName: "Youth Group",
-        description: "Group for young devotees",
-        mentorId: null,
-        createdAt: now,
-        updatedAt: now,
-      },
-      {
-        id: 2,
-        groupName: "Family Circle",
-        description: "Family devotional activities",
-        mentorId: null,
-        createdAt: now,
-        updatedAt: now,
-      },
+      { id: 1, groupName: "Youth Satsang", description: "Group for young devotees ages 16-30", mentorId: 1, createdAt: d(400), updatedAt: now },
+      { id: 2, familyName: "Family Circle", description: "Family devotional activities and support", groupName: "Family Circle", mentorId: null, createdAt: d(300), updatedAt: now },
+      { id: 3, groupName: "Families", description: "Families group", mentorId: null, createdAt: d(300), updatedAt: now },
+      { id: 4, groupName: "Kirtan Mandali", description: "Devotional singing group", mentorId: null, createdAt: d(500), updatedAt: now },
+      { id: 5, groupName: "Seva Squad", description: "Volunteers for event organization", mentorId: null, createdAt: d(350), updatedAt: now },
+      { id: 6, groupName: "Gita Study Circle", description: "Bhagavad Gita study group led by Nilesh Desai", mentorId: null, createdAt: d(600), updatedAt: now },
     ];
+    sampleGroups.forEach(g => { this.groups.set(g.id, g); this.counters.groups = Math.max(this.counters.groups, g.id + 1); });
 
-    sampleGroups.forEach(group => {
-      this.groups.set(group.id, group);
-      this.counters.groups = Math.max(this.counters.groups, group.id + 1);
-    });
-
-    // Sample events
+    // ─── EVENTS ───────────────────────────────────────────────────────
     const sampleEvents: Event[] = [
-      {
-        id: 1,
-        title: "Weekly Sabha",
-        description: "Regular weekly devotional gathering",
-        startDate: now,
-        location: "Main Hall",
-        maxAttendees: 100,
-        createdAt: now,
-        updatedAt: now,
-      },
+      { id: 1, title: "Janmashtami Mahotsav 2025", description: "Grand celebration of Lord Krishna's birth. Night-long kirtan, drama, and prasad.", eventType: "festival", location: "Main Sabha Hall, Ahmedabad", startDate: future(15), endDate: future(15), startTime: "18:00", endTime: "06:00", capacity: 500, registrationRequired: true, registrationDeadline: future(10), cost: "0", status: "planned", imageUrl: "https://images.unsplash.com/photo-1545167622-3a6ac756afa4?w=400", isArchived: false, archivedAt: null, maxParticipants: 500, createdBy: "admin", isActive: true, createdAt: d(30), updatedAt: now },
+      { id: 2, title: "Weekly Sunday Satsang", description: "Regular weekly devotional gathering with kirtan and discourse.", eventType: "satsang", location: "Community Center, Surat", startDate: future(5), endDate: future(5), startTime: "09:00", endTime: "11:30", capacity: 150, registrationRequired: false, registrationDeadline: null, cost: "0", status: "planned", imageUrl: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400", isArchived: false, archivedAt: null, maxParticipants: 150, createdBy: "admin", isActive: true, createdAt: d(10), updatedAt: now },
+      { id: 3, title: "Bhagavad Gita Workshop", description: "3-day intensive workshop on Bhagavad Gita's practical teachings led by Nilesh Desai.", eventType: "workshop", location: "Radha Niwas, Vadodara", startDate: future(25), endDate: future(27), startTime: "08:00", endTime: "17:00", capacity: 50, registrationRequired: true, registrationDeadline: future(20), cost: "500", status: "planned", imageUrl: "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400", isArchived: false, archivedAt: null, maxParticipants: 50, createdBy: "admin", isActive: true, createdAt: d(20), updatedAt: now },
+      { id: 4, title: "Annual General Meeting", description: "Yearly planning and review meeting for all senior devotees.", eventType: "meeting", location: "Main Sabha Hall, Ahmedabad", startDate: future(45), endDate: future(45), startTime: "10:00", endTime: "13:00", capacity: 100, registrationRequired: true, registrationDeadline: future(40), cost: "0", status: "planned", imageUrl: null, isArchived: false, archivedAt: null, maxParticipants: 100, createdBy: "admin", isActive: true, createdAt: d(5), updatedAt: now },
+      { id: 5, title: "Guru Purnima Celebration", description: "Celebration of Guru Purnima with special puja and discourse.", eventType: "festival", location: "Main Sabha Hall, Ahmedabad", startDate: d(10), endDate: d(10), startTime: "07:00", endTime: "12:00", capacity: 300, registrationRequired: false, registrationDeadline: null, cost: "0", status: "completed", imageUrl: "https://images.unsplash.com/photo-1517217568890-f2a4c6beb4e7?w=400", isArchived: false, archivedAt: null, maxParticipants: 300, createdBy: "admin", isActive: true, createdAt: d(60), updatedAt: d(10) },
+      { id: 6, title: "Monthly Sabha - June", description: "Monthly devotional assembly.", eventType: "satsang", location: "Community Center, Surat", startDate: d(30), endDate: d(30), startTime: "09:00", endTime: "11:00", capacity: 200, registrationRequired: false, registrationDeadline: null, cost: "0", status: "completed", imageUrl: null, isArchived: true, archivedAt: d(29), maxParticipants: 200, createdBy: "admin", isActive: true, createdAt: d(60), updatedAt: d(29) },
     ];
+    sampleEvents.forEach(e => { this.events.set(e.id, e); this.counters.events = Math.max(this.counters.events, e.id + 1); });
 
-    sampleEvents.forEach(event => {
-      this.events.set(event.id, event);
-      this.counters.events = Math.max(this.counters.events, event.id + 1);
+    // ─── ATTENDANCE ───────────────────────────────────────────────────
+    const sampleAttendance: Attendance[] = [];
+    let attId = 1;
+    // Past events attendance for devotees 1-10
+    const pastEventIds = [5, 6];
+    const allDevoteeIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    pastEventIds.forEach(evId => {
+      allDevoteeIds.forEach(dvId => {
+        if (Math.random() > 0.2) {
+          sampleAttendance.push({ id: attId++, devoteeId: dvId, eventId: evId, attendanceDate: evId === 5 ? d(10) : d(30), status: "present", checkInTime: "09:15", checkOutTime: "11:45", notes: null, markedBy: "admin", createdAt: d(evId === 5 ? 10 : 30), updatedAt: now });
+        }
+      });
     });
+    // Historical attendance for months - for devotee 1 (Ramesh) to show trends
+    for (let month = 1; month <= 12; month++) {
+      const dt = new Date(now); dt.setMonth(dt.getMonth() - month);
+      [1, 2, 3].forEach(evPerMonth => {
+        const dt2 = new Date(dt); dt2.setDate(evPerMonth * 7);
+        sampleAttendance.push({ id: attId++, devoteeId: 1, eventId: 5, attendanceDate: dt2, status: Math.random() > 0.15 ? "present" : "absent", checkInTime: "09:00", checkOutTime: "11:30", notes: null, markedBy: "admin", createdAt: dt2, updatedAt: dt2 });
+      });
+    }
+    sampleAttendance.forEach(a => { this.attendance.set(a.id, a); this.counters.attendance = Math.max(this.counters.attendance, a.id + 1); });
 
-    // Sample mandals
+    // ─── DONATIONS ────────────────────────────────────────────────────
+    const sampleDonations: Donation[] = [];
+    let donId = 1;
+    const donTypes = ["Seva", "Festival Fund", "Building Fund", "Anna Seva", "General"];
+    // Donations for devotee 1 (Ramesh) over 12 months for trends
+    for (let month = 0; month <= 11; month++) {
+      const dt = new Date(now); dt.setMonth(dt.getMonth() - month);
+      const amount = (Math.floor(Math.random() * 5) + 1) * 500;
+      sampleDonations.push({ id: donId++, devoteeId: 1, amount: String(amount), donationType: donTypes[month % donTypes.length], donationDate: dt, paymentMethod: "Cash", reference: `DON-${1000 + donId}`, notes: null, anonymousDonation: false, isActive: true, createdAt: dt, updatedAt: dt });
+    }
+    // Donations for devotee 5 (Suresh - major donor)
+    for (let month = 0; month <= 11; month++) {
+      const dt = new Date(now); dt.setMonth(dt.getMonth() - month);
+      const amount = (Math.floor(Math.random() * 10) + 5) * 1000;
+      sampleDonations.push({ id: donId++, devoteeId: 5, amount: String(amount), donationType: donTypes[month % donTypes.length], donationDate: dt, paymentMethod: month % 3 === 0 ? "Cheque" : "Online", reference: `DON-${2000 + donId}`, notes: null, anonymousDonation: false, isActive: true, createdAt: dt, updatedAt: dt });
+    }
+    // Some for other devotees
+    [2, 6, 8, 9].forEach(dvId => {
+      for (let i = 0; i < 4; i++) {
+        const dt = d(i * 90);
+        sampleDonations.push({ id: donId++, devoteeId: dvId, amount: String((Math.floor(Math.random() * 5) + 1) * 500), donationType: donTypes[i % donTypes.length], donationDate: dt, paymentMethod: "Cash", reference: `DON-${3000 + donId}`, notes: null, anonymousDonation: false, isActive: true, createdAt: dt, updatedAt: dt });
+      }
+    });
+    sampleDonations.forEach(dn => { this.donations.set(dn.id, dn); this.counters.donations = Math.max(this.counters.donations, dn.id + 1); });
+
+    // ─── VOLUNTEERING ─────────────────────────────────────────────────
+    const sampleVolunteering: Volunteering[] = [];
+    let volId = 1;
+    const volActivities = ["Event Setup", "Prasad Distribution", "Registration Desk", "Kirtan Support", "Decoration", "Kitchen Seva", "Children's Program"];
+    // Volunteering for devotee 1 over 12 months
+    for (let month = 0; month <= 11; month++) {
+      const dt = new Date(now); dt.setMonth(dt.getMonth() - month);
+      const actCount = Math.floor(Math.random() * 3) + 1;
+      for (let i = 0; i < actCount; i++) {
+        sampleVolunteering.push({ id: volId++, devoteeId: 1, activityType: volActivities[(month + i) % volActivities.length], activityDate: dt, hours: Math.floor(Math.random() * 4) + 2, description: "Regular seva work", status: "completed", supervisorId: 8, notes: null, isActive: true, createdAt: dt, updatedAt: dt });
+      }
+    }
+    // Volunteering for other devotees
+    [2, 3, 5, 6, 7, 8, 9].forEach(dvId => {
+      for (let i = 0; i < 5; i++) {
+        const dt = d(i * 60);
+        sampleVolunteering.push({ id: volId++, devoteeId: dvId, activityType: volActivities[i % volActivities.length], activityDate: dt, hours: Math.floor(Math.random() * 4) + 1, description: "Seva activity", status: "completed", supervisorId: 8, notes: null, isActive: true, createdAt: dt, updatedAt: dt });
+      }
+    });
+    sampleVolunteering.forEach(v => { this.volunteering.set(v.id, v); this.counters.volunteering = Math.max(this.counters.volunteering, v.id + 1); });
+
+    // ─── MANDALS ──────────────────────────────────────────────────────
     const sampleMandals: Mandal[] = [
-      {
-        id: 1,
-        name: "Central Mandal",
-        code: "CM001",
-        contactPerson: "Admin",
-        contactPhone: "123-456-7890",
-        createdAt: now,
-        updatedAt: now,
-      },
+      { id: 1, name: "Ahmedabad Central Mandal", code: "ACM001", contactPerson: "Ramesh Sharma", contactPhone: "9876543210", createdAt: d(500), updatedAt: now },
+      { id: 2, name: "Surat Mandal", code: "SM002", contactPerson: "Suresh Patel", contactPhone: "9876543220", createdAt: d(400), updatedAt: now },
     ];
+    sampleMandals.forEach(m => { this.mandals.set(m.id, m); this.counters.mandals = Math.max(this.counters.mandals, m.id + 1); });
 
-    sampleMandals.forEach(mandal => {
-      this.mandals.set(mandal.id, mandal);
-      this.counters.mandals = Math.max(this.counters.mandals, mandal.id + 1);
-    });
-
-    // Sample sabha locations
+    // ─── SABHA LOCATIONS ──────────────────────────────────────────────
     const sampleLocations: SabhaLocation[] = [
-      {
-        id: 1,
-        name: "Main Sabha Hall",
-        address: "123 Main Street",
-        zipCode: "12345",
-        facilities: ["Audio System", "Parking"],
-        createdAt: now,
-        updatedAt: now,
-      },
+      { id: 1, name: "Main Sabha Hall", address: "123 Main Street, Ahmedabad", zipCode: "380001", facilities: ["Audio System", "AC", "Parking", "Kitchen"], createdAt: d(500), updatedAt: now },
+      { id: 2, name: "Community Center Surat", address: "45 Krishna Lane, Surat", zipCode: "395001", facilities: ["Audio System", "Projection", "Parking"], createdAt: d(300), updatedAt: now },
     ];
+    sampleLocations.forEach(l => { this.sabhaLocations.set(l.id, l); this.counters.sabhaLocations = Math.max(this.counters.sabhaLocations, l.id + 1); });
+  }
 
-    sampleLocations.forEach(location => {
-      this.sabhaLocations.set(location.id, location);
-      this.counters.sabhaLocations = Math.max(this.counters.sabhaLocations, location.id + 1);
+  // Helper: get devotees by family ID
+  async getDevoteesByFamily(familyId: number): Promise<Devotee[]> {
+    return Array.from(this.devotees.values()).filter(d => d.familyId === familyId);
+  }
+
+  // Helper: archive an event
+  async archiveEvent(id: number): Promise<Event | undefined> {
+    const event = this.events.get(id);
+    if (!event) return undefined;
+    const updated = { ...event, isArchived: true, archivedAt: new Date(), updatedAt: new Date() };
+    this.events.set(id, updated as Event);
+    return updated as Event;
+  }
+
+  // Helper: auto-archive past events
+  async autoArchivePastEvents(): Promise<number> {
+    const now = new Date();
+    let count = 0;
+    this.events.forEach((event, id) => {
+      if (!event.isArchived && event.endDate && new Date(event.endDate) < now) {
+        const updated = { ...event, isArchived: true, archivedAt: now, updatedAt: now };
+        this.events.set(id, updated as Event);
+        count++;
+      }
     });
+    return count;
   }
 
   // User operations
@@ -463,6 +540,10 @@ export class MemoryStorage implements IStorage {
       registrationDeadline: eventData.registrationDeadline || null,
       cost: eventData.cost || null,
       status: eventData.status || "planned",
+      imageUrl: (eventData as any).imageUrl || null,
+      isArchived: (eventData as any).isArchived || false,
+      archivedAt: (eventData as any).archivedAt || null,
+      maxParticipants: (eventData as any).maxParticipants || eventData.capacity || null,
       createdBy: eventData.createdBy || null,
       isActive: eventData.isActive ?? true,
       createdAt: now,

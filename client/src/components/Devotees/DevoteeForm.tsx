@@ -487,13 +487,13 @@ export function DevoteeForm({ devotee, onSuccess, onCancel }: DevoteeFormProps) 
                 <Label htmlFor="mentorId">Mentor</Label>
                 <Select 
                   value={formData.mentorId?.toString() || ""} 
-                  onValueChange={(value) => handleInputChange("mentorId", value ? parseInt(value) : undefined)}
+                  onValueChange={(value) => handleInputChange("mentorId", value && value !== "none-mentor" ? parseInt(value) : undefined)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select mentor" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No Mentor</SelectItem>
+                    <SelectItem value="none-mentor">No Mentor</SelectItem>
                     {mentors.map((mentor: any) => (
                       <SelectItem key={mentor.id} value={mentor.id.toString()}>
                         {mentor.devoteeId} - {mentor.specialization}
@@ -507,13 +507,13 @@ export function DevoteeForm({ devotee, onSuccess, onCancel }: DevoteeFormProps) 
                 <Label htmlFor="familyId">Family</Label>
                 <Select 
                   value={formData.familyId?.toString() || ""} 
-                  onValueChange={(value) => handleInputChange("familyId", value ? parseInt(value) : undefined)}
+                  onValueChange={(value) => handleInputChange("familyId", value && value !== "none-family" ? parseInt(value) : undefined)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select family" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No Family</SelectItem>
+                    <SelectItem value="none-family">No Family</SelectItem>
                     {families.map((family: any) => (
                       <SelectItem key={family.id} value={family.id.toString()}>
                         {family.familyName}
