@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { CalendarDays, Plus, MapPin, Users, Clock, Edit, Trash2, Archive, ArchiveRestore, Image, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -239,9 +240,25 @@ function EventCard({
               <Archive className="w-3 h-3 mr-1" /> Archive
             </Button>
           )}
-          <Button size="sm" variant="ghost" className="h-7 text-destructive hover:text-destructive px-2" onClick={onDelete}>
-            <Trash2 className="w-3 h-3" />
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button size="sm" variant="ghost" className="h-7 text-destructive hover:text-destructive px-2">
+                <Trash2 className="w-3 h-3" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Event</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete "{event.title}"? This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={onDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </CardContent>
     </Card>
@@ -393,7 +410,7 @@ export default function Events() {
                 key={event.id}
                 event={event}
                 onEdit={() => { setEditingEvent(event); setIsFormOpen(true); }}
-                onDelete={() => { if (confirm(`Delete "${event.title}"?`)) deleteMutation.mutate(event.id); }}
+                onDelete={() => deleteMutation.mutate(event.id)}
                 onArchive={() => archiveMutation.mutate(event.id)}
                 onUnarchive={() => unarchiveMutation.mutate(event.id)}
               />

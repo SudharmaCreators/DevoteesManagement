@@ -320,9 +320,9 @@ export class MemoryStorage implements IStorage {
   }
 
   // Helper: archive an event
-  async archiveEvent(id: number): Promise<Event | undefined> {
+  async archiveEvent(id: number): Promise<Event> {
     const event = this.events.get(id);
-    if (!event) return undefined;
+    if (!event) throw new Error(`Event ${id} not found`);
     const updated = { ...event, isArchived: true, archivedAt: new Date(), updatedAt: new Date() };
     this.events.set(id, updated as Event);
     return updated as Event;
@@ -340,6 +340,15 @@ export class MemoryStorage implements IStorage {
       }
     });
     return count;
+  }
+
+  // Helper: unarchive an event
+  async unarchiveEvent(id: number): Promise<Event> {
+    const event = this.events.get(id);
+    if (!event) throw new Error(`Event ${id} not found`);
+    const updated = { ...event, isArchived: false, archivedAt: null, updatedAt: new Date() };
+    this.events.set(id, updated as Event);
+    return updated as Event;
   }
 
   // User operations
@@ -981,7 +990,7 @@ export class MemoryStorage implements IStorage {
   }
 
   // Extended analytics: donation trends by month
-  getDonationTrends(): Array<{ month: string; amount: number }> {
+  async getDonationTrends(): Promise<Array<{ month: string; amount: number }>> {
     const donations = Array.from(this.donations.values());
     const byMonth: Record<string, number> = {};
     donations.forEach(d => {
@@ -993,7 +1002,7 @@ export class MemoryStorage implements IStorage {
   }
 
   // Extended analytics: attendance trends by month
-  getAttendanceTrends(): Array<{ month: string; present: number; absent: number }> {
+  async getAttendanceTrends(): Promise<Array<{ month: string; present: number; absent: number }>> {
     const records = Array.from(this.attendance.values());
     const byMonth: Record<string, { present: number; absent: number }> = {};
     records.forEach(a => {
@@ -1007,7 +1016,7 @@ export class MemoryStorage implements IStorage {
   }
 
   // Extended analytics: volunteering hours by activity
-  getVolunteeringStats(): Array<{ activity: string; hours: number }> {
+  async getVolunteeringStats(): Promise<Array<{ activity: string; hours: number }>> {
     const records = Array.from(this.volunteering.values());
     const byActivity: Record<string, number> = {};
     records.forEach(v => {

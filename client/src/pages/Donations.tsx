@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Heart, Plus, IndianRupee, CreditCard, Banknote, Gift, Edit, Trash2, CheckCircle, Clock } from "lucide-react";
+import { Heart, Plus, IndianRupee, CreditCard, Banknote, Gift, Edit, Trash2, CheckCircle, Clock, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
@@ -51,6 +51,7 @@ const getTypeBadge = (type: string) => {
 };
 
 export default function Donations() {
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedType, setSelectedType] = useState("all");
   const [selectedPayment, setSelectedPayment] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
@@ -110,10 +111,15 @@ export default function Donations() {
   });
 
   const filteredDonations = donations.filter((d: Donation) => {
+    const donorName = d.anonymousDonation ? "anonymous" : getDevoteeName(d.devoteeId).toLowerCase();
+    const matchesSearch = !searchTerm || donorName.includes(searchTerm.toLowerCase()) ||
+      (d.purpose || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (d.transactionId || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (d.receiptNumber || "").toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = selectedType === "all" || d.donationType === selectedType;
     const matchesPayment = selectedPayment === "all" || d.paymentMethod === selectedPayment;
     const matchesStatus = selectedStatus === "all" || d.status === selectedStatus;
-    return matchesType && matchesPayment && matchesStatus;
+    return matchesSearch && matchesType && matchesPayment && matchesStatus;
   });
 
   const totalDonations = donations.reduce((s: number, d: Donation) => s + parseFloat(d.amount || "0"), 0);
@@ -178,6 +184,15 @@ export default function Donations() {
             <div className="flex items-center justify-between flex-wrap gap-3">
               <CardTitle className="flex items-center gap-2"><Heart className="w-5 h-5 text-primary" /> Donation Records ({filteredDonations.length})</CardTitle>
               <div className="flex flex-wrap gap-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search donor, purpose..."
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                    className="pl-9 w-52"
+                  />
+                </div>
                 <Select value={selectedType} onValueChange={setSelectedType}>
                   <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
                   <SelectContent>

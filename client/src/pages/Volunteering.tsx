@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { HandHeart, Plus, Clock, Award, Users, Activity, Edit, Trash2, Calendar } from "lucide-react";
+import { HandHeart, Plus, Clock, Award, Users, Activity, Edit, Trash2, Calendar, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
@@ -48,6 +48,7 @@ const ACTIVITY_COLORS: Record<string, string> = {
 };
 
 export default function VolunteeringPage() {
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedActivity, setSelectedActivity] = useState("all");
   const [selectedMonth, setSelectedMonth] = useState("all");
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -107,6 +108,12 @@ export default function VolunteeringPage() {
   const filteredRecords = records.filter((r: VolRecord) => {
     const rDate = new Date(r.startDate);
     const now = new Date();
+    const devoteeName = getDevoteeName(r.devoteeId).toLowerCase();
+    const matchesSearch = !searchTerm ||
+      devoteeName.includes(searchTerm.toLowerCase()) ||
+      r.activityType.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (r.description || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (r.location || "").toLowerCase().includes(searchTerm.toLowerCase());
     const matchesActivity = selectedActivity === "all" || r.activityType.toLowerCase() === selectedActivity;
     let matchesMonth = true;
     if (selectedMonth === "current") {
@@ -115,7 +122,7 @@ export default function VolunteeringPage() {
       const last = new Date(now.getFullYear(), now.getMonth() - 1);
       matchesMonth = rDate.getMonth() === last.getMonth() && rDate.getFullYear() === last.getFullYear();
     }
-    return matchesActivity && matchesMonth;
+    return matchesSearch && matchesActivity && matchesMonth;
   });
 
   const totalHours = records.reduce((s: number, r: VolRecord) => s + (r.hoursCompleted || r.hoursCommitted || 0), 0);
@@ -180,6 +187,15 @@ export default function VolunteeringPage() {
             <div className="flex items-center justify-between flex-wrap gap-3">
               <CardTitle className="flex items-center gap-2"><HandHeart className="w-5 h-5 text-primary" /> Volunteering Records ({filteredRecords.length})</CardTitle>
               <div className="flex flex-wrap gap-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search volunteer, activity..."
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                    className="pl-9 w-52"
+                  />
+                </div>
                 <Select value={selectedActivity} onValueChange={setSelectedActivity}>
                   <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
                   <SelectContent>
