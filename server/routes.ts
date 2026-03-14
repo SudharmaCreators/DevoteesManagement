@@ -882,6 +882,229 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ─── GOD MODE: AUDIT LOG ───────────────────────────────────────────────────
+  const auditLog: any[] = [];
+  const addAudit = (action: string, entity: string, entityId: any, userId: string, before: any, after: any) => {
+    auditLog.unshift({ id: auditLog.length + 1, timestamp: new Date().toISOString(), action, entity, entityId, userId, before, after });
+    if (auditLog.length > 500) auditLog.pop();
+  };
+  (app as any)._addAudit = addAudit;
+
+  app.get('/api/admin/audit', isAuthenticated, async (req: any, res) => {
+    const { entity, action, limit = "100" } = req.query;
+    let logs = [...auditLog];
+    if (entity) logs = logs.filter(l => l.entity === entity);
+    if (action) logs = logs.filter(l => l.action === action);
+    res.json(logs.slice(0, Number(limit)));
+  });
+
+  // ─── GOD MODE: MACROS ──────────────────────────────────────────────────────
+  const macros: any[] = [];
+  let macroIdCounter = 1;
+
+  app.get('/api/admin/macros', isAuthenticated, async (_req, res) => res.json(macros));
+
+  app.post('/api/admin/macros', isAuthenticated, async (req: any, res) => {
+    const macro = { id: macroIdCounter++, ...req.body, createdAt: new Date().toISOString(), runCount: 0, lastRunAt: null };
+    macros.unshift(macro);
+    res.status(201).json(macro);
+  });
+
+  app.put('/api/admin/macros/:id', isAuthenticated, async (req: any, res) => {
+    const idx = macros.findIndex(m => m.id === Number(req.params.id));
+    if (idx === -1) return res.status(404).json({ message: "Macro not found" });
+    macros[idx] = { ...macros[idx], ...req.body, updatedAt: new Date().toISOString() };
+    res.json(macros[idx]);
+  });
+
+  app.delete('/api/admin/macros/:id', isAuthenticated, async (req, res) => {
+    const idx = macros.findIndex(m => m.id === Number(req.params.id));
+    if (idx === -1) return res.status(404).json({ message: "Macro not found" });
+    macros.splice(idx, 1);
+    res.json({ message: "Macro deleted" });
+  });
+
+  app.post('/api/admin/macros/:id/run', isAuthenticated, async (req: any, res) => {
+    const macro = macros.find(m => m.id === Number(req.params.id));
+    if (!macro) return res.status(404).json({ message: "Macro not found" });
+    const results: any[] = [];
+    for (const step of (macro.steps || [])) {
+      try {
+        if (step.type === "create_devotee" && step.data) {
+          const d = await storage.createDevotee(step.data);
+          addAudit("CREATE", "devotee", d.id, req.user?.claims?.sub || "macro", null, d);
+          results.push({ step: step.label, status: "ok", result: d });
+        } else if (step.type === "create_event" && step.data) {
+          const e = await storage.createEvent(step.data);
+          addAudit("CREATE", "event", e.id, req.user?.claims?.sub || "macro", null, e);
+          results.push({ step: step.label, status: "ok", result: e });
+        } else if (step.type === "create_attendance" && step.data) {
+          const a = await storage.createAttendance(step.data);
+          addAudit("CREATE", "attendance", a.id, req.user?.claims?.sub || "macro", null, a);
+          results.push({ step: step.label, status: "ok", result: a });
+        } else {
+          results.push({ step: step.label || "unknown", status: "skipped", note: "Step type not supported" });
+        }
+      } catch (err: any) {
+        results.push({ step: step.label || "unknown", status: "error", error: err.message });
+      }
+    }
+    macro.runCount = (macro.runCount || 0) + 1;
+    macro.lastRunAt = new Date().toISOString();
+    addAudit("RUN_MACRO", "macro", macro.id, req.user?.claims?.sub || "system", null, { name: macro.name, steps: macro.steps?.length });
+    res.json({ macro: macro.name, results, ranAt: macro.lastRunAt });
+  });
+
+  // ─── GOD MODE: BULK OPERATIONS ─────────────────────────────────────────────
+  app.post('/api/admin/bulk', isAuthenticated, async (req: any, res) => {
+    const { entity, operation, ids, data } = req.body;
+    const userId = req.user?.claims?.sub || "system";
+    const results: any[] = [];
+    try {
+      for (const id of (ids || [])) {
+        if (entity === "devotees") {
+          if (operation === "delete") {
+            const before = await storage.getDevotee(id);
+            await storage.deleteDevotee(id);
+            addAudit("DELETE", "devotee", id, userId, before, null);
+            results.push({ id, status: "deleted" });
+          } else if (operation === "update" && data) {
+            const before = await storage.getDevotee(id);
+            const after = await storage.updateDevotee(id, data);
+            addAudit("UPDATE", "devotee", id, userId, before, after);
+            results.push({ id, status: "updated" });
+          }
+        } else if (entity === "events") {
+          if (operation === "delete") {
+            const before = await storage.getEvent(id);
+            await storage.deleteEvent(id);
+            addAudit("DELETE", "event", id, userId, before, null);
+            results.push({ id, status: "deleted" });
+          }
+        } else if (entity === "attendance") {
+          if (operation === "delete") {
+            await storage.deleteAttendance(id);
+            addAudit("DELETE", "attendance", id, userId, null, null);
+            results.push({ id, status: "deleted" });
+          }
+        }
+      }
+      res.json({ operation, entity, count: results.length, results });
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  // ─── GOD MODE: FULL DATA EXPORT ────────────────────────────────────────────
+  app.get('/api/admin/export/data', isAuthenticated, async (req, res) => {
+    try {
+      const [devotees, families, events, attendance, donations, volunteering, mentors, groups, mandals, locations] = await Promise.all([
+        storage.getDevotees(),
+        storage.getFamilies(),
+        storage.getEvents(),
+        storage.getAttendance(),
+        storage.getDonations(),
+        storage.getVolunteering(),
+        storage.getMentors(),
+        storage.getGroups(),
+        storage.getMandals(),
+        storage.getSabhaLocations(),
+      ]);
+      const exportData = {
+        version: "2.0",
+        exportedAt: new Date().toISOString(),
+        appName: "Madhav Parivar",
+        counts: { devotees: devotees.length, families: families.length, events: events.length, attendance: attendance.length, donations: donations.length, volunteering: volunteering.length },
+        data: { devotees, families, events, attendance, donations, volunteering, mentors, groups, mandals, sabhaLocations: locations },
+      };
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="madhav-parivar-data-${new Date().toISOString().split('T')[0]}.json"`);
+      res.json(exportData);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ─── GOD MODE: FULL DATA IMPORT ────────────────────────────────────────────
+  app.post('/api/admin/import/data', isAuthenticated, async (req: any, res) => {
+    try {
+      const { data } = req.body;
+      const userId = req.user?.claims?.sub || "system";
+      const results: Record<string, number> = {};
+      if (data?.devotees) {
+        for (const d of data.devotees) {
+          try { await storage.createDevotee(d); results.devotees = (results.devotees || 0) + 1; } catch {}
+        }
+      }
+      if (data?.families) {
+        for (const f of data.families) {
+          try { await storage.createFamily(f); results.families = (results.families || 0) + 1; } catch {}
+        }
+      }
+      if (data?.events) {
+        for (const e of data.events) {
+          try { await storage.createEvent(e); results.events = (results.events || 0) + 1; } catch {}
+        }
+      }
+      addAudit("IMPORT_DATA", "system", null, userId, null, results);
+      res.json({ message: "Data imported successfully", imported: results });
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  // ─── GOD MODE: RELATIONAL DATA ─────────────────────────────────────────────
+  app.get('/api/admin/relations/:entity/:id', isAuthenticated, async (req, res) => {
+    const { entity, id } = req.params;
+    const numId = Number(id);
+    try {
+      if (entity === "devotee") {
+        const devotee = await storage.getDevotee(numId);
+        if (!devotee) return res.status(404).json({ message: "Not found" });
+        const [family, mentor, attendance, donations, volunteering] = await Promise.all([
+          devotee.familyId ? storage.getFamily(devotee.familyId) : null,
+          devotee.mentorId ? storage.getMentor(devotee.mentorId) : null,
+          storage.getAttendance(numId),
+          storage.getDonations(numId),
+          storage.getVolunteering(numId),
+        ]);
+        res.json({ devotee, family, mentor, attendanceCount: attendance.length, donationsCount: donations.length, volunteeringCount: volunteering.length, attendanceRate: attendance.length ? Math.round((attendance.filter((a: any) => a.status === "present").length / attendance.length) * 100) : 0 });
+      } else if (entity === "family") {
+        const family = await storage.getFamily(numId);
+        if (!family) return res.status(404).json({ message: "Not found" });
+        const members = await storage.getDevoteesByFamily(numId);
+        res.json({ family, members, memberCount: members.length });
+      } else if (entity === "event") {
+        const event = await storage.getEvent(numId);
+        if (!event) return res.status(404).json({ message: "Not found" });
+        const attendance = (await storage.getAttendance(undefined, numId));
+        const presentCount = attendance.filter((a: any) => a.status === "present").length;
+        res.json({ event, attendanceCount: attendance.length, presentCount, attendanceRate: attendance.length ? Math.round((presentCount / attendance.length) * 100) : 0 });
+      } else {
+        res.status(400).json({ message: "Unknown entity type" });
+      }
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ─── GOD MODE: LINK DEVOTEE TO FAMILY/MENTOR ──────────────────────────────
+  app.patch('/api/admin/link', isAuthenticated, async (req: any, res) => {
+    const { devoteeId, familyId, mentorId } = req.body;
+    const userId = req.user?.claims?.sub || "system";
+    try {
+      const before = await storage.getDevotee(devoteeId);
+      const updates: any = {};
+      if (familyId !== undefined) updates.familyId = familyId;
+      if (mentorId !== undefined) updates.mentorId = mentorId;
+      const after = await storage.updateDevotee(devoteeId, updates);
+      addAudit("LINK", "devotee", devoteeId, userId, before, after);
+      res.json(after);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Header } from "@/components/Layout/Header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -22,7 +24,9 @@ import {
   Layers, Paintbrush, LayoutDashboard, Shield, FileJson, History,
   Home, Building, Calendar, Heart, CalendarDays, HandHeart,
   BarChart3, CreditCard, GraduationCap, PanelTop, Type,
-  Sliders, Sparkles, Tag, Move
+  Sliders, Sparkles, Tag, Move, Edit2, Search, Link2, Unlink2,
+  Play, Square, Zap, Clock, Activity, Filter, Table, GitBranch,
+  CheckSquare, MinusSquare, ArrowRight, XCircle, Info
 } from "lucide-react";
 
 const ICON_OPTIONS = [
@@ -45,19 +49,15 @@ const THEME_PRESETS = [
 ];
 
 const ALL_PAGES = [
-  { id: "dashboard", label: "Dashboard" },
-  { id: "devotees", label: "Devotees" },
-  { id: "families", label: "Families" },
-  { id: "mentors", label: "Mentors" },
-  { id: "attendance", label: "Attendance" },
-  { id: "donations", label: "Donations" },
-  { id: "events", label: "Events" },
-  { id: "volunteering", label: "Volunteering" },
-  { id: "analytics", label: "Analytics" },
-  { id: "id-cards", label: "ID Cards" },
-  { id: "settings", label: "Settings" },
-  { id: "dev-studio", label: "Dev Studio" },
+  { id: "dashboard", label: "Dashboard" }, { id: "devotees", label: "Devotees" },
+  { id: "families", label: "Families" }, { id: "mentors", label: "Mentors" },
+  { id: "attendance", label: "Attendance" }, { id: "donations", label: "Donations" },
+  { id: "events", label: "Events" }, { id: "volunteering", label: "Volunteering" },
+  { id: "analytics", label: "Analytics" }, { id: "id-cards", label: "ID Cards" },
+  { id: "settings", label: "Settings" }, { id: "dev-studio", label: "Dev Studio" },
 ];
+
+const ENTITIES = ["devotees", "families", "events", "attendance", "donations", "volunteering", "mentors", "groups"];
 
 function ColorSlider({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   const parts = value.split(" ");
@@ -65,7 +65,6 @@ function ColorSlider({ label, value, onChange }: { label: string; value: string;
   const s = parseInt(parts[1]) || 0;
   const l = parseInt(parts[2]) || 50;
   const preview = `hsl(${h}, ${s}%, ${l}%)`;
-
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
@@ -76,35 +75,840 @@ function ColorSlider({ label, value, onChange }: { label: string; value: string;
         </div>
       </div>
       <div className="grid grid-cols-3 gap-2">
-        <div>
-          <Label className="text-xs text-muted-foreground">Hue (0-360)</Label>
-          <Input
-            type="number" min={0} max={360} value={h}
-            onChange={e => onChange(`${e.target.value} ${s}% ${l}%`)}
-            className="h-7 text-xs"
-          />
-        </div>
-        <div>
-          <Label className="text-xs text-muted-foreground">Saturation %</Label>
-          <Input
-            type="number" min={0} max={100} value={s}
-            onChange={e => onChange(`${h} ${e.target.value}% ${l}%`)}
-            className="h-7 text-xs"
-          />
-        </div>
-        <div>
-          <Label className="text-xs text-muted-foreground">Lightness %</Label>
-          <Input
-            type="number" min={0} max={100} value={l}
-            onChange={e => onChange(`${h} ${s}% ${e.target.value}%`)}
-            className="h-7 text-xs"
-          />
-        </div>
+        <div><Label className="text-xs text-muted-foreground">Hue (0-360)</Label>
+          <Input type="number" min={0} max={360} value={h} onChange={e => onChange(`${e.target.value} ${s}% ${l}%`)} className="h-7 text-xs" /></div>
+        <div><Label className="text-xs text-muted-foreground">Saturation %</Label>
+          <Input type="number" min={0} max={100} value={s} onChange={e => onChange(`${h} ${e.target.value}% ${l}%`)} className="h-7 text-xs" /></div>
+        <div><Label className="text-xs text-muted-foreground">Lightness %</Label>
+          <Input type="number" min={0} max={100} value={l} onChange={e => onChange(`${h} ${s}% ${e.target.value}%`)} className="h-7 text-xs" /></div>
       </div>
     </div>
   );
 }
 
+// ─── DATA BROWSER COMPONENT ────────────────────────────────────────────────
+function DataBrowser() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [entity, setEntity] = useState("devotees");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [editingRow, setEditingRow] = useState<any>(null);
+  const [editData, setEditData] = useState<any>({});
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [addData, setAddData] = useState<any>({});
+
+  const { data: rows = [], isLoading } = useQuery<any[]>({ queryKey: [`/api/${entity}`] });
+  const { data: devotees = [] } = useQuery<any[]>({ queryKey: ["/api/devotees"] });
+  const { data: families = [] } = useQuery<any[]>({ queryKey: ["/api/families"] });
+  const { data: events = [] } = useQuery<any[]>({ queryKey: ["/api/events"] });
+
+  const devoteeMap = useMemo(() => { const m: Record<number, string> = {}; devotees.forEach((d: any) => { m[d.id] = `${d.firstName} ${d.lastName}`; }); return m; }, [devotees]);
+  const familyMap = useMemo(() => { const m: Record<number, string> = {}; families.forEach((f: any) => { m[f.id] = f.familyName; }); return m; }, [families]);
+  const eventMap = useMemo(() => { const m: Record<number, string> = {}; events.forEach((e: any) => { m[e.id] = e.title; }); return m; }, [events]);
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) => apiRequest("PATCH", `/api/${entity}/${id}`, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: [`/api/${entity}`] }); setEditingRow(null); toast({ title: "Record updated" }); },
+    onError: () => toast({ title: "Update failed", variant: "destructive" }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/${entity}/${id}`, undefined),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: [`/api/${entity}`] }); toast({ title: "Record deleted" }); },
+    onError: () => toast({ title: "Delete failed", variant: "destructive" }),
+  });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/admin/bulk", { entity, operation: "delete", ids: Array.from(selectedIds) }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: [`/api/${entity}`] }); setSelectedIds(new Set()); toast({ title: `${selectedIds.size} records deleted` }); },
+    onError: () => toast({ title: "Bulk delete failed", variant: "destructive" }),
+  });
+
+  const filteredRows = useMemo(() => {
+    if (!searchTerm) return rows;
+    const s = searchTerm.toLowerCase();
+    return rows.filter((r: any) => Object.values(r).some(v => String(v || "").toLowerCase().includes(s)));
+  }, [rows, searchTerm]);
+
+  const getDisplayValue = (key: string, val: any): string => {
+    if (val === null || val === undefined) return "—";
+    if (key === "devoteeId" && devoteeMap[val]) return devoteeMap[val];
+    if (key === "familyId" && familyMap[val]) return familyMap[val];
+    if (key === "eventId" && eventMap[val]) return eventMap[val];
+    if (val instanceof Date || (typeof val === "string" && val.includes("T") && val.includes("Z"))) {
+      try { return new Date(val).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }); } catch { return String(val); }
+    }
+    if (typeof val === "boolean") return val ? "✓" : "✗";
+    const s = String(val);
+    return s.length > 50 ? s.slice(0, 50) + "…" : s;
+  };
+
+  const getColumns = () => {
+    if (filteredRows.length === 0) return [];
+    const priorityKeys: Record<string, string[]> = {
+      devotees: ["id", "devoteeId", "firstName", "lastName", "email", "phone", "spiritualLevel", "city", "familyId", "mentorId", "isActive"],
+      families: ["id", "familyName", "headOfFamily", "city", "totalMembers", "phone", "isActive"],
+      events: ["id", "title", "eventType", "location", "startDate", "status", "capacity", "isArchived"],
+      attendance: ["id", "devoteeId", "eventId", "attendanceDate", "status", "checkInTime", "markedBy"],
+      donations: ["id", "devoteeId", "amount", "donationType", "donationDate", "paymentMethod"],
+      volunteering: ["id", "devoteeId", "activityType", "activityDate", "hours", "status"],
+      mentors: ["id", "devoteeId", "specialization", "experience", "isActive"],
+      groups: ["id", "groupName", "description"],
+    };
+    return priorityKeys[entity] || Object.keys(filteredRows[0]).slice(0, 10);
+  };
+
+  const columns = getColumns();
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredRows.length) setSelectedIds(new Set());
+    else setSelectedIds(new Set(filteredRows.map((r: any) => r.id)));
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <Select value={entity} onValueChange={v => { setEntity(v); setSelectedIds(new Set()); setSearchTerm(""); }}>
+          <SelectTrigger className="w-44 h-8"><Database className="w-3 h-3 mr-1" /><SelectValue /></SelectTrigger>
+          <SelectContent>{ENTITIES.map(e => <SelectItem key={e} value={e} className="capitalize">{e}</SelectItem>)}</SelectContent>
+        </Select>
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-2 top-2 w-3.5 h-3.5 text-muted-foreground" />
+          <Input placeholder="Search records..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-7 h-8 text-sm" />
+        </div>
+        <div className="ml-auto flex items-center gap-2">
+          {selectedIds.size > 0 && (
+            <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={() => bulkDeleteMutation.mutate()} disabled={bulkDeleteMutation.isPending}>
+              <Trash2 className="w-3 h-3 mr-1" /> Delete {selectedIds.size} selected
+            </Button>
+          )}
+          <Badge variant="outline" className="text-xs">{filteredRows.length} / {rows.length} records</Badge>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12"><RefreshCw className="w-6 h-6 animate-spin text-primary" /></div>
+      ) : (
+        <div className="rounded-lg border border-border overflow-hidden">
+          <ScrollArea className="h-[480px]">
+            <table className="w-full text-xs">
+              <thead className="sticky top-0 bg-muted z-10">
+                <tr>
+                  <th className="p-2 text-left w-8">
+                    <input type="checkbox" checked={selectedIds.size === filteredRows.length && filteredRows.length > 0}
+                      onChange={toggleSelectAll} className="rounded" />
+                  </th>
+                  {columns.map(col => (
+                    <th key={col} className="p-2 text-left font-medium text-muted-foreground whitespace-nowrap capitalize">
+                      {col.replace(/([A-Z])/g, ' $1').trim()}
+                    </th>
+                  ))}
+                  <th className="p-2 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRows.map((row: any) => (
+                  <tr key={row.id} className={`border-t border-border hover:bg-muted/20 ${selectedIds.has(row.id) ? "bg-primary/5" : ""}`}>
+                    <td className="p-2">
+                      <input type="checkbox" checked={selectedIds.has(row.id)}
+                        onChange={e => setSelectedIds(prev => { const n = new Set(prev); e.target.checked ? n.add(row.id) : n.delete(row.id); return n; })}
+                        className="rounded" />
+                    </td>
+                    {columns.map(col => (
+                      <td key={col} className="p-2 max-w-[160px] truncate">
+                        {editingRow?.id === row.id ? (
+                          <Input
+                            value={editData[col] ?? ""}
+                            onChange={e => setEditData((p: any) => ({ ...p, [col]: e.target.value }))}
+                            className="h-6 text-xs py-0 px-1"
+                          />
+                        ) : (
+                          <span title={String(row[col] || "")} className={`${row[col] === null || row[col] === undefined ? "text-muted-foreground italic" : ""}`}>
+                            {getDisplayValue(col, row[col])}
+                          </span>
+                        )}
+                      </td>
+                    ))}
+                    <td className="p-2 text-right whitespace-nowrap">
+                      {editingRow?.id === row.id ? (
+                        <div className="flex items-center justify-end gap-1">
+                          <Button size="sm" className="h-6 text-xs px-2" onClick={() => updateMutation.mutate({ id: row.id, data: editData })} disabled={updateMutation.isPending}>
+                            <Check className="w-3 h-3 mr-0.5" /> Save
+                          </Button>
+                          <Button size="sm" variant="outline" className="h-6 text-xs px-2" onClick={() => setEditingRow(null)}>Cancel</Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => { setEditingRow(row); setEditData({ ...row }); }}>
+                            <Edit2 className="w-3 h-3" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive hover:text-destructive" onClick={() => deleteMutation.mutate(row.id)}>
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {filteredRows.length === 0 && (
+              <div className="text-center py-12 text-muted-foreground">
+                <Database className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                <p className="text-sm">No records found</p>
+              </div>
+            )}
+          </ScrollArea>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── RELATIONAL MAP COMPONENT ─────────────────────────────────────────────
+function RelationalMap() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [selectedDevoteeId, setSelectedDevoteeId] = useState<string>("");
+  const [linkFamilyId, setLinkFamilyId] = useState<string>("");
+  const [linkMentorId, setLinkMentorId] = useState<string>("");
+
+  const { data: devotees = [] } = useQuery<any[]>({ queryKey: ["/api/devotees"] });
+  const { data: families = [] } = useQuery<any[]>({ queryKey: ["/api/families"] });
+  const { data: mentors = [] } = useQuery<any[]>({ queryKey: ["/api/mentors"] });
+
+  const { data: relations, isLoading: relLoading } = useQuery<any>({
+    queryKey: ["/api/admin/relations/devotee", selectedDevoteeId],
+    queryFn: () => selectedDevoteeId ? fetch(`/api/admin/relations/devotee/${selectedDevoteeId}`, { credentials: "include" }).then(r => r.json()) : null,
+    enabled: !!selectedDevoteeId,
+  });
+
+  const linkMutation = useMutation({
+    mutationFn: (data: any) => apiRequest("PATCH", "/api/admin/link", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/relations/devotee", selectedDevoteeId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/devotees"] });
+      toast({ title: "Relationship updated" });
+    },
+    onError: () => toast({ title: "Failed to update relationship", variant: "destructive" }),
+  });
+
+  const selectedDevotee = devotees.find((d: any) => String(d.id) === selectedDevoteeId);
+
+  const familyMembers = useMemo(() => {
+    if (!selectedDevotee?.familyId) return [];
+    return devotees.filter((d: any) => d.familyId === selectedDevotee.familyId && d.id !== selectedDevotee.id);
+  }, [devotees, selectedDevotee]);
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><GitBranch className="w-5 h-5 text-primary" /> Devotee Relationship Explorer</CardTitle>
+          <CardDescription>Select a devotee to visualize their connections and manage relationships</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Select value={selectedDevoteeId} onValueChange={v => { setSelectedDevoteeId(v); setLinkFamilyId(""); setLinkMentorId(""); }}>
+            <SelectTrigger className="w-full max-w-sm">
+              <SelectValue placeholder="Select a devotee..." />
+            </SelectTrigger>
+            <SelectContent>
+              {devotees.map((d: any) => <SelectItem key={d.id} value={String(d.id)}>{d.firstName} {d.lastName} ({d.devoteeId})</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
+
+      {selectedDevoteeId && selectedDevotee && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Central Devotee Node */}
+          <Card className="border-2 border-primary/40 bg-primary/5">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-xs font-bold">
+                  {selectedDevotee.firstName?.[0]}{selectedDevotee.lastName?.[0]}
+                </div>
+                {selectedDevotee.firstName} {selectedDevotee.lastName}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-xs">
+              <div className="flex justify-between"><span className="text-muted-foreground">ID</span><span className="font-mono">{selectedDevotee.devoteeId}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Level</span><Badge variant="outline" className="text-xs">{selectedDevotee.spiritualLevel}</Badge></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">City</span><span>{selectedDevotee.city || "—"}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Active</span><span>{selectedDevotee.isActive ? "✓ Yes" : "✗ No"}</span></div>
+            </CardContent>
+          </Card>
+
+          {/* Family Connection */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2"><Building className="w-4 h-4 text-blue-500" /> Family</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {selectedDevotee.familyId ? (
+                <div>
+                  <p className="text-sm font-medium">{familyMembers.length > 0 ? families.find((f: any) => f.id === selectedDevotee.familyId)?.familyName || "Family" : "Family"}</p>
+                  <p className="text-xs text-muted-foreground mb-2">{familyMembers.length} other member{familyMembers.length !== 1 ? "s" : ""}</p>
+                  <div className="space-y-1">
+                    {familyMembers.slice(0, 4).map((m: any) => (
+                      <div key={m.id} className="flex items-center gap-2 text-xs bg-muted/30 rounded p-1.5">
+                        <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold text-xs">{m.firstName?.[0]}</div>
+                        <span>{m.firstName} {m.lastName}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">Not linked to any family</p>
+              )}
+              <Separator />
+              <div className="space-y-2">
+                <Label className="text-xs">Change Family</Label>
+                <Select value={linkFamilyId} onValueChange={setLinkFamilyId}>
+                  <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Select family..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="null">Remove from family</SelectItem>
+                    {families.map((f: any) => <SelectItem key={f.id} value={String(f.id)}>{f.familyName}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Button size="sm" className="w-full h-7 text-xs" disabled={!linkFamilyId || linkMutation.isPending}
+                  onClick={() => linkMutation.mutate({ devoteeId: Number(selectedDevoteeId), familyId: linkFamilyId === "null" ? null : Number(linkFamilyId) })}>
+                  <Link2 className="w-3 h-3 mr-1" /> Apply Family Link
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Mentor Connection */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2"><GraduationCap className="w-4 h-4 text-green-500" /> Mentor & Activity</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {selectedDevotee.mentorId ? (
+                <div>
+                  <p className="text-xs text-muted-foreground">Current Mentor</p>
+                  {(() => {
+                    const mentor = mentors.find((m: any) => m.id === selectedDevotee.mentorId);
+                    const mentorDevotee = mentor ? devotees.find((d: any) => d.id === mentor.devoteeId) : null;
+                    return mentorDevotee ? (
+                      <div className="flex items-center gap-2 bg-green-50 rounded p-2 mt-1">
+                        <div className="w-6 h-6 bg-green-200 rounded-full flex items-center justify-center text-green-800 font-bold text-xs">{mentorDevotee.firstName?.[0]}</div>
+                        <div>
+                          <p className="text-xs font-medium">{mentorDevotee.firstName} {mentorDevotee.lastName}</p>
+                          <p className="text-xs text-muted-foreground">{mentor.specialization}</p>
+                        </div>
+                      </div>
+                    ) : <p className="text-xs">Mentor #{selectedDevotee.mentorId}</p>;
+                  })()}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">No mentor assigned</p>
+              )}
+              {relLoading ? (
+                <div className="text-xs text-muted-foreground">Loading stats...</div>
+              ) : relations ? (
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { label: "Attendance", value: relations.attendanceCount || 0, color: "text-blue-600" },
+                    { label: "Donations", value: relations.donationsCount || 0, color: "text-green-600" },
+                    { label: "Volunteer", value: relations.volunteeringCount || 0, color: "text-purple-600" },
+                  ].map(s => (
+                    <div key={s.label} className="text-center bg-muted/30 rounded p-2">
+                      <p className={`text-lg font-bold ${s.color}`}>{s.value}</p>
+                      <p className="text-xs text-muted-foreground">{s.label}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              <Separator />
+              <div className="space-y-2">
+                <Label className="text-xs">Change Mentor</Label>
+                <Select value={linkMentorId} onValueChange={setLinkMentorId}>
+                  <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Select mentor..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="null">Remove mentor</SelectItem>
+                    {mentors.map((m: any) => {
+                      const md = devotees.find((d: any) => d.id === m.devoteeId);
+                      return <SelectItem key={m.id} value={String(m.id)}>{md ? `${md.firstName} ${md.lastName}` : `Mentor #${m.id}`}</SelectItem>;
+                    })}
+                  </SelectContent>
+                </Select>
+                <Button size="sm" className="w-full h-7 text-xs" disabled={!linkMentorId || linkMutation.isPending}
+                  onClick={() => linkMutation.mutate({ devoteeId: Number(selectedDevoteeId), mentorId: linkMentorId === "null" ? null : Number(linkMentorId) })}>
+                  <Link2 className="w-3 h-3 mr-1" /> Apply Mentor Link
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Family Overview Grid */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center gap-2"><Building className="w-4 h-4 text-primary" /> Family ↔ Devotee Map</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            {families.map((f: any) => {
+              const members = devotees.filter((d: any) => d.familyId === f.id);
+              return (
+                <div key={f.id} className="border border-border rounded-lg p-3 space-y-2">
+                  <p className="text-xs font-semibold truncate">{f.familyName}</p>
+                  <p className="text-xs text-muted-foreground">{f.city}</p>
+                  <div className="flex flex-wrap gap-1">
+                    {members.map((m: any) => (
+                      <div key={m.id} title={`${m.firstName} ${m.lastName}`}
+                        className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center text-primary text-xs font-bold cursor-pointer hover:bg-primary/20"
+                        onClick={() => setSelectedDevoteeId(String(m.id))}>
+                        {m.firstName?.[0]}
+                      </div>
+                    ))}
+                    {members.length === 0 && <span className="text-xs text-muted-foreground italic">empty</span>}
+                  </div>
+                  <Badge variant="outline" className="text-xs">{members.length} members</Badge>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ─── MACRO STUDIO COMPONENT ───────────────────────────────────────────────
+function MacroStudio() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [showCreate, setShowCreate] = useState(false);
+  const [macroName, setMacroName] = useState("");
+  const [macroDesc, setMacroDesc] = useState("");
+  const [steps, setSteps] = useState<any[]>([]);
+  const [stepType, setStepType] = useState("create_devotee");
+  const [stepLabel, setStepLabel] = useState("");
+  const [stepData, setStepData] = useState("{}");
+  const [runResult, setRunResult] = useState<any>(null);
+  const [showRunResult, setShowRunResult] = useState(false);
+
+  const { data: macros = [], isLoading } = useQuery<any[]>({ queryKey: ["/api/admin/macros"] });
+
+  const createMacro = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/admin/macros", { name: macroName, description: macroDesc, steps }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/admin/macros"] }); setShowCreate(false); setMacroName(""); setMacroDesc(""); setSteps([]); toast({ title: "Macro saved" }); },
+    onError: () => toast({ title: "Failed to save macro", variant: "destructive" }),
+  });
+
+  const deleteMacro = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/admin/macros/${id}`, undefined),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/admin/macros"] }); toast({ title: "Macro deleted" }); },
+  });
+
+  const runMacro = useMutation({
+    mutationFn: (id: number) => apiRequest("POST", `/api/admin/macros/${id}/run`, {}),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/macros"] });
+      setRunResult(data); setShowRunResult(true);
+      const ok = data.results?.filter((r: any) => r.status === "ok").length || 0;
+      toast({ title: `Macro ran: ${ok}/${data.results?.length || 0} steps succeeded` });
+    },
+    onError: () => toast({ title: "Macro run failed", variant: "destructive" }),
+  });
+
+  const addStep = () => {
+    try {
+      const data = JSON.parse(stepData);
+      setSteps(prev => [...prev, { type: stepType, label: stepLabel || stepType, data }]);
+      setStepLabel("");
+      setStepData("{}");
+    } catch { toast({ title: "Invalid JSON data for step", variant: "destructive" }); }
+  };
+
+  const STEP_TYPES = [
+    { value: "create_devotee", label: "Create Devotee" },
+    { value: "create_event", label: "Create Event" },
+    { value: "create_attendance", label: "Mark Attendance" },
+  ];
+
+  const STEP_TEMPLATES: Record<string, any> = {
+    create_devotee: { firstName: "Name", lastName: "Surname", email: "email@example.com", phone: "9876543210", gender: "Male", spiritualLevel: "Beginner", isActive: true },
+    create_event: { title: "New Event", eventType: "satsang", location: "Sabha Hall", startDate: new Date().toISOString(), status: "planned", isActive: true },
+    create_attendance: { devoteeId: 1, attendanceDate: new Date().toISOString(), status: "present", markedBy: "macro" },
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-semibold flex items-center gap-2"><Zap className="w-5 h-5 text-yellow-500" /> Macro Studio</h3>
+          <p className="text-sm text-muted-foreground">Automate repetitive tasks with saved macro sequences</p>
+        </div>
+        <Button onClick={() => setShowCreate(true)} size="sm">
+          <Plus className="w-4 h-4 mr-1" /> New Macro
+        </Button>
+      </div>
+
+      {/* Saved Macros */}
+      {isLoading ? (
+        <div className="flex justify-center py-8"><RefreshCw className="w-6 h-6 animate-spin text-primary" /></div>
+      ) : macros.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            <Zap className="w-10 h-10 mx-auto mb-3 opacity-30" />
+            <p className="font-medium">No macros yet</p>
+            <p className="text-sm">Create a macro to automate repetitive data operations</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {macros.map((macro: any) => (
+            <Card key={macro.id} className="border-border hover:border-primary/40 transition-colors">
+              <CardHeader className="pb-2">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-yellow-500" />
+                      {macro.name}
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground mt-0.5">{macro.description}</p>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button size="sm" className="h-7 text-xs" onClick={() => runMacro.mutate(macro.id)} disabled={runMacro.isPending}>
+                      <Play className="w-3 h-3 mr-1" /> Run
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive" onClick={() => deleteMacro.mutate(macro.id)}>
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1"><Layers className="w-3 h-3" />{macro.steps?.length || 0} steps</span>
+                  <span className="flex items-center gap-1"><Play className="w-3 h-3" />Run {macro.runCount || 0} times</span>
+                  {macro.lastRunAt && <span className="flex items-center gap-1"><Clock className="w-3 h-3" />Last: {new Date(macro.lastRunAt).toLocaleDateString()}</span>}
+                </div>
+                {macro.steps && macro.steps.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {macro.steps.slice(0, 3).map((s: any, i: number) => (
+                      <div key={i} className="flex items-center gap-2 text-xs bg-muted/30 rounded px-2 py-1">
+                        <span className="text-muted-foreground">{i + 1}.</span>
+                        <ArrowRight className="w-3 h-3 text-muted-foreground" />
+                        <span className="font-medium">{s.label || s.type}</span>
+                      </div>
+                    ))}
+                    {macro.steps.length > 3 && <p className="text-xs text-muted-foreground pl-2">+{macro.steps.length - 3} more steps</p>}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Create Macro Dialog */}
+      <Dialog open={showCreate} onOpenChange={setShowCreate}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Zap className="w-4 h-4 text-yellow-500" /> Create New Macro</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1"><Label className="text-xs">Macro Name</Label>
+                <Input value={macroName} onChange={e => setMacroName(e.target.value)} placeholder="e.g. Onboard New Member" className="h-8" /></div>
+              <div className="space-y-1"><Label className="text-xs">Description</Label>
+                <Input value={macroDesc} onChange={e => setMacroDesc(e.target.value)} placeholder="What does this macro do?" className="h-8" /></div>
+            </div>
+
+            <div className="border rounded-lg p-3 space-y-3">
+              <h4 className="text-sm font-medium">Add Steps</h4>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1"><Label className="text-xs">Step Type</Label>
+                  <Select value={stepType} onValueChange={v => { setStepType(v); setStepData(JSON.stringify(STEP_TEMPLATES[v] || {}, null, 2)); }}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>{STEP_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
+                  </Select></div>
+                <div className="space-y-1"><Label className="text-xs">Step Label</Label>
+                  <Input value={stepLabel} onChange={e => setStepLabel(e.target.value)} placeholder="Describe this step" className="h-8" /></div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Step Data (JSON)</Label>
+                <Textarea value={stepData} onChange={e => setStepData(e.target.value)} className="font-mono text-xs h-28" />
+              </div>
+              <Button size="sm" variant="outline" onClick={addStep} disabled={!stepType}><Plus className="w-3 h-3 mr-1" /> Add Step</Button>
+            </div>
+
+            {steps.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium">Steps ({steps.length})</h4>
+                {steps.map((s, i) => (
+                  <div key={i} className="flex items-center gap-3 p-2 rounded border border-border bg-muted/20">
+                    <span className="text-xs text-muted-foreground w-4">{i + 1}</span>
+                    <Badge variant="outline" className="text-xs">{s.type}</Badge>
+                    <span className="text-xs flex-1">{s.label}</span>
+                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive" onClick={() => setSteps(prev => prev.filter((_, idx) => idx !== i))}>
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
+            <Button onClick={() => createMacro.mutate()} disabled={!macroName || steps.length === 0 || createMacro.isPending}>
+              <Save className="w-4 h-4 mr-1" /> Save Macro
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Run Result Dialog */}
+      <Dialog open={showRunResult} onOpenChange={setShowRunResult}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Macro Run Results — {runResult?.macro}</DialogTitle></DialogHeader>
+          <ScrollArea className="h-64">
+            {runResult?.results?.map((r: any, i: number) => (
+              <div key={i} className={`flex items-start gap-3 p-2 rounded mb-2 ${r.status === "ok" ? "bg-green-50 border border-green-200" : r.status === "error" ? "bg-red-50 border border-red-200" : "bg-muted"}`}>
+                {r.status === "ok" ? <Check className="w-4 h-4 text-green-600 mt-0.5" /> : r.status === "error" ? <XCircle className="w-4 h-4 text-red-600 mt-0.5" /> : <Info className="w-4 h-4 text-muted-foreground mt-0.5" />}
+                <div>
+                  <p className="text-xs font-medium">{r.step}</p>
+                  {r.error && <p className="text-xs text-red-600">{r.error}</p>}
+                  {r.note && <p className="text-xs text-muted-foreground">{r.note}</p>}
+                </div>
+              </div>
+            ))}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// ─── AUDIT LOG COMPONENT ──────────────────────────────────────────────────
+function AuditLog() {
+  const [entityFilter, setEntityFilter] = useState("all");
+  const [actionFilter, setActionFilter] = useState("all");
+
+  const { data: logs = [], isLoading, refetch } = useQuery<any[]>({
+    queryKey: ["/api/admin/audit", entityFilter, actionFilter],
+    queryFn: () => {
+      const params = new URLSearchParams({ limit: "200" });
+      if (entityFilter !== "all") params.set("entity", entityFilter);
+      if (actionFilter !== "all") params.set("action", actionFilter);
+      return fetch(`/api/admin/audit?${params}`, { credentials: "include" }).then(r => r.json());
+    },
+    refetchInterval: 10000,
+  });
+
+  const actionColors: Record<string, string> = {
+    CREATE: "bg-green-100 text-green-800",
+    UPDATE: "bg-blue-100 text-blue-800",
+    DELETE: "bg-red-100 text-red-800",
+    LINK: "bg-purple-100 text-purple-800",
+    RUN_MACRO: "bg-yellow-100 text-yellow-800",
+    IMPORT_DATA: "bg-orange-100 text-orange-800",
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-semibold flex items-center gap-2"><Activity className="w-5 h-5 text-primary" /> Audit Trail</h3>
+          <p className="text-sm text-muted-foreground">Complete log of all data changes in this session</p>
+        </div>
+        <Button size="sm" variant="outline" onClick={() => refetch()}><RefreshCw className="w-3.5 h-3.5 mr-1" /> Refresh</Button>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <Select value={entityFilter} onValueChange={setEntityFilter}>
+          <SelectTrigger className="w-36 h-8 text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Entities</SelectItem>
+            {["devotee", "family", "event", "attendance", "donation", "volunteering", "mentor", "group", "macro", "system"].map(e => (
+              <SelectItem key={e} value={e} className="capitalize">{e}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={actionFilter} onValueChange={setActionFilter}>
+          <SelectTrigger className="w-36 h-8 text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Actions</SelectItem>
+            {["CREATE", "UPDATE", "DELETE", "LINK", "RUN_MACRO", "IMPORT_DATA"].map(a => (
+              <SelectItem key={a} value={a}>{a}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Badge variant="outline" className="text-xs">{logs.length} events</Badge>
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-8"><RefreshCw className="w-6 h-6 animate-spin text-primary" /></div>
+      ) : logs.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            <Activity className="w-10 h-10 mx-auto mb-3 opacity-30" />
+            <p className="font-medium">No audit events yet</p>
+            <p className="text-sm">Events are logged when you create, update, or delete records using the GOD mode tools</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <ScrollArea className="h-[500px] border rounded-lg">
+          <div className="divide-y divide-border">
+            {logs.map((log: any) => (
+              <div key={log.id} className="flex items-start gap-3 p-3 hover:bg-muted/20">
+                <Badge className={`text-xs shrink-0 mt-0.5 ${actionColors[log.action] || "bg-gray-100 text-gray-800"}`}>{log.action}</Badge>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-medium capitalize">{log.entity}</span>
+                    {log.entityId && <span className="text-xs text-muted-foreground">#{log.entityId}</span>}
+                    <span className="text-xs text-muted-foreground">by {log.userId}</span>
+                  </div>
+                  {log.before && log.after && (
+                    <div className="mt-1 text-xs text-muted-foreground font-mono truncate">
+                      {Object.keys(log.after || {}).filter(k => log.before?.[k] !== log.after?.[k]).slice(0, 3).map(k => (
+                        <span key={k} className="mr-2">{k}: {String(log.before?.[k] || "null")} → {String(log.after?.[k] || "null")}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <span className="text-xs text-muted-foreground shrink-0">{new Date(log.timestamp).toLocaleTimeString()}</span>
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+      )}
+    </div>
+  );
+}
+
+// ─── DATA EXPORT/IMPORT COMPONENT ─────────────────────────────────────────
+function DataExport({ config, setImportJson, importJson, handleImport, importMutation, handleExport, snapshotName, setSnapshotName, snapshotMutation, restoreMutation }: any) {
+  const { toast } = useToast();
+
+  const handleFullExport = async () => {
+    const res = await fetch('/api/admin/export/data', { credentials: 'include' });
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `madhav-parivar-data-${new Date().toISOString().split('T')[0]}.json`; a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "Full data exported" });
+  };
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Download className="w-5 h-5 text-primary" /> Full Data Export</CardTitle>
+            <CardDescription>Download complete database dump — all devotees, families, events, and more</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="bg-muted rounded-lg p-4 text-sm space-y-1.5">
+              {["All 20 devotees + profiles", "6 families + relationships", "12 events + attendance records", "Donations + volunteering history", "Mentors + groups + mandals", "Sabha locations"].map(item => (
+                <div key={item} className="flex items-center gap-2 text-muted-foreground">
+                  <Check className="w-3 h-3 text-green-500" /> {item}
+                </div>
+              ))}
+            </div>
+            <Button className="w-full" onClick={handleFullExport}>
+              <Download className="w-4 h-4 mr-2" /> Download Full Database JSON
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Download className="w-5 h-5 text-blue-500" /> Config Export</CardTitle>
+            <CardDescription>Export app configuration (theme, navigation, custom fields, roles)</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button className="w-full" variant="outline" onClick={handleExport}>
+              <Download className="w-4 h-4 mr-2" /> Download Config JSON
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Upload className="w-5 h-5 text-primary" /> Import Configuration</CardTitle>
+            <CardDescription>Restore settings from a previously exported config file</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Textarea value={importJson} onChange={e => setImportJson(e.target.value)} placeholder='Paste exported config JSON here...' className="font-mono text-xs h-32" />
+            <div className="flex gap-2">
+              <Button className="flex-1" onClick={handleImport} disabled={!importJson || importMutation.isPending}>
+                {importMutation.isPending ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />} Import Config
+              </Button>
+              <Button variant="outline" onClick={() => setImportJson("")}>Clear</Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><History className="w-5 h-5 text-primary" /> Config Snapshots</CardTitle>
+            <CardDescription>Save and restore configuration states (up to 10 snapshots)</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex gap-2">
+              <Input value={snapshotName} onChange={e => setSnapshotName(e.target.value)} placeholder="Snapshot name (optional)" className="flex-1" />
+              <Button onClick={() => snapshotMutation.mutate(snapshotName)} disabled={snapshotMutation.isPending}>
+                {snapshotMutation.isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              </Button>
+            </div>
+            <ScrollArea className="h-52">
+              {(!config?.snapshots || config.snapshots.length === 0) ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <History className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">No snapshots yet</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {config.snapshots.map((snap: any) => (
+                    <div key={snap.id} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{snap.name}</p>
+                        <p className="text-xs text-muted-foreground">{new Date(snap.createdAt).toLocaleString()}</p>
+                      </div>
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => restoreMutation.mutate(snap.id)} disabled={restoreMutation.isPending}>
+                        <RotateCcw className="w-3 h-3 mr-1" /> Restore
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><FileJson className="w-5 h-5 text-primary" /> Live Config State</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="relative">
+              <Button size="sm" variant="ghost" className="absolute top-2 right-2 h-6 text-xs z-10"
+                onClick={() => { navigator.clipboard.writeText(JSON.stringify(config, null, 2)); toast({ title: "Copied" }); }}>
+                <Copy className="w-3 h-3 mr-1" /> Copy
+              </Button>
+              <ScrollArea className="h-44">
+                <pre className="text-xs font-mono text-muted-foreground bg-muted p-3 rounded-lg overflow-x-auto">
+                  {JSON.stringify({ appInfo: config?.appInfo, navigationItems: config?.navigation?.items?.length, theme: config?.theme?.activePreset, customFields: config?.customFields?.length, roleProfiles: Object.keys(config?.roleProfiles || {}) }, null, 2)}
+                </pre>
+              </ScrollArea>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ─── MAIN DEV STUDIO COMPONENT ────────────────────────────────────────────
 export default function DevStudio() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -114,11 +918,8 @@ export default function DevStudio() {
   const [importJson, setImportJson] = useState("");
   const [newNavItem, setNewNavItem] = useState({ name: "", href: "", icon: "Home" });
   const [newField, setNewField] = useState({ label: "", type: "text", entity: "devotee", required: false, placeholder: "", options: "" });
-  const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
 
-  const { data: config, isLoading } = useQuery<any>({
-    queryKey: ["/api/dev-config"],
-  });
+  const { data: config, isLoading } = useQuery<any>({ queryKey: ["/api/dev-config"] });
 
   const [localAppInfo, setLocalAppInfo] = useState<any>(null);
   const [localNav, setLocalNav] = useState<any[]>([]);
@@ -138,14 +939,8 @@ export default function DevStudio() {
 
   const applyThemePreview = (colors: any) => {
     const root = document.documentElement;
-    if (colors.primary) root.style.setProperty('--primary', `hsl(${colors.primary})`);
-    if (colors.secondary) root.style.setProperty('--secondary', `hsl(${colors.secondary})`);
-    if (colors.accent) root.style.setProperty('--accent', `hsl(${colors.accent})`);
-    if (colors.background) root.style.setProperty('--background', `hsl(${colors.background})`);
-    if (colors.foreground) root.style.setProperty('--foreground', `hsl(${colors.foreground})`);
-    if (colors.card) root.style.setProperty('--card', `hsl(${colors.card})`);
-    if (colors.border) root.style.setProperty('--border', `hsl(${colors.border})`);
-    if (colors.muted) root.style.setProperty('--muted', `hsl(${colors.muted})`);
+    const keys = ["primary", "secondary", "accent", "background", "foreground", "card", "border", "muted"];
+    keys.forEach(k => { if (colors[k]) root.style.setProperty(`--${k}`, `hsl(${colors[k]})`); });
   };
 
   const saveAppInfoMutation = useMutation({
@@ -209,10 +1004,6 @@ export default function DevStudio() {
     setLocalNav(items);
   };
 
-  const toggleNavVisibility = (id: string) => {
-    setLocalNav(prev => prev.map(item => item.id === id ? { ...item, visible: !item.visible } : item));
-  };
-
   const addNavItem = () => {
     if (!newNavItem.name || !newNavItem.href) return;
     const item = { id: `custom_${Date.now()}`, ...newNavItem, visible: true, order: localNav.length };
@@ -220,18 +1011,8 @@ export default function DevStudio() {
     setNewNavItem({ name: "", href: "", icon: "Home" });
   };
 
-  const removeNavItem = (id: string) => {
-    setLocalNav(prev => prev.filter(item => item.id !== id));
-  };
-
   const applyPreset = (preset: typeof THEME_PRESETS[0]) => {
-    const newColors = {
-      ...localTheme?.customColors,
-      primary: preset.primary,
-      secondary: preset.secondary,
-      accent: preset.accent,
-      background: preset.bg,
-    };
+    const newColors = { ...localTheme?.customColors, primary: preset.primary, secondary: preset.secondary, accent: preset.accent, background: preset.bg };
     const newTheme = { ...localTheme, activePreset: preset.id, customColors: newColors };
     setLocalTheme(newTheme);
     if (localTheme?.useCustom) applyThemePreview(newColors);
@@ -240,8 +1021,7 @@ export default function DevStudio() {
 
   const updateCustomColor = (key: string, value: string) => {
     const newColors = { ...localTheme?.customColors, [key]: value };
-    const newTheme = { ...localTheme, customColors: newColors };
-    setLocalTheme(newTheme);
+    setLocalTheme({ ...localTheme, customColors: newColors });
     if (localTheme?.useCustom) applyThemePreview(newColors);
   };
 
@@ -254,16 +1034,6 @@ export default function DevStudio() {
     setNewField({ label: "", type: "text", entity: "devotee", required: false, placeholder: "", options: "" });
   };
 
-  const removeField = (id: string) => setLocalFields(prev => prev.filter(f => f.id !== id));
-
-  const toggleRolePage = (role: string, pageId: string) => {
-    setLocalRoles((prev: any) => {
-      const pages: string[] = prev[role]?.visiblePages || [];
-      const updated = pages.includes(pageId) ? pages.filter((p: string) => p !== pageId) : [...pages, pageId];
-      return { ...prev, [role]: { ...prev[role], visiblePages: updated } };
-    });
-  };
-
   const handleExport = async () => {
     const res = await fetch('/api/dev-config/export', { credentials: 'include' });
     const blob = await res.blob();
@@ -274,12 +1044,16 @@ export default function DevStudio() {
   };
 
   const handleImport = () => {
-    try {
-      const data = JSON.parse(importJson);
-      importMutation.mutate(data);
-    } catch {
-      toast({ title: "Invalid JSON format", variant: "destructive" });
-    }
+    try { importMutation.mutate(JSON.parse(importJson)); }
+    catch { toast({ title: "Invalid JSON format", variant: "destructive" }); }
+  };
+
+  const toggleRolePage = (role: string, pageId: string) => {
+    setLocalRoles((prev: any) => {
+      const pages: string[] = prev[role]?.visiblePages || [];
+      const updated = pages.includes(pageId) ? pages.filter((p: string) => p !== pageId) : [...pages, pageId];
+      return { ...prev, [role]: { ...prev[role], visiblePages: updated } };
+    });
   };
 
   if (isLoading || !localAppInfo) {
@@ -293,40 +1067,55 @@ export default function DevStudio() {
     );
   }
 
+  const TAB_ROW1 = [
+    { id: "app-info", label: "App Info", icon: LayoutDashboard },
+    { id: "theme", label: "Theme Studio", icon: Paintbrush },
+    { id: "navigation", label: "Navigation", icon: Navigation },
+    { id: "fields", label: "Schema", icon: Database },
+    { id: "roles", label: "Access Control", icon: Shield },
+  ];
+
+  const TAB_ROW2 = [
+    { id: "data-browser", label: "Data Browser", icon: Table },
+    { id: "relational-map", label: "Relational Map", icon: GitBranch },
+    { id: "macros", label: "Macro Studio", icon: Zap },
+    { id: "audit-log", label: "Audit Trail", icon: Activity },
+    { id: "devops", label: "Dev Ops", icon: FileJson },
+  ];
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <Header
-        title="Developer Studio"
-        subtitle="Full application configuration and design control"
+        title="Developer Studio — GOD Mode"
+        subtitle="Complete application control · Data management · Automation · Audit"
         actions={
-          <Badge className="bg-yellow-500 text-black text-xs font-bold px-2 py-1">
-            <Code2 className="w-3 h-3 mr-1" /> DEV MODE ACTIVE
+          <Badge className="bg-yellow-500 text-black text-xs font-bold px-3 py-1.5 animate-pulse">
+            <Code2 className="w-3.5 h-3.5 mr-1.5" /> GOD MODE ACTIVE
           </Badge>
         }
       />
 
-      <main className="flex-1 overflow-y-auto p-6 bg-background">
+      <main className="flex-1 overflow-y-auto p-4 bg-background">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid grid-cols-6 w-full mb-6">
-            <TabsTrigger value="app-info" className="flex items-center gap-1.5 text-xs">
-              <LayoutDashboard className="w-3.5 h-3.5" /> App Info
-            </TabsTrigger>
-            <TabsTrigger value="theme" className="flex items-center gap-1.5 text-xs">
-              <Paintbrush className="w-3.5 h-3.5" /> Theme
-            </TabsTrigger>
-            <TabsTrigger value="navigation" className="flex items-center gap-1.5 text-xs">
-              <Navigation className="w-3.5 h-3.5" /> Navigation
-            </TabsTrigger>
-            <TabsTrigger value="custom-fields" className="flex items-center gap-1.5 text-xs">
-              <Database className="w-3.5 h-3.5" /> Fields
-            </TabsTrigger>
-            <TabsTrigger value="roles" className="flex items-center gap-1.5 text-xs">
-              <Shield className="w-3.5 h-3.5" /> Roles
-            </TabsTrigger>
-            <TabsTrigger value="config" className="flex items-center gap-1.5 text-xs">
-              <FileJson className="w-3.5 h-3.5" /> Config
-            </TabsTrigger>
-          </TabsList>
+          {/* Two-row tab layout for 10 tabs */}
+          <div className="space-y-1 mb-5">
+            <div className="text-xs text-muted-foreground px-1 mb-1 font-medium">CONFIGURATION</div>
+            <TabsList className="grid grid-cols-5 w-full bg-muted/60">
+              {TAB_ROW1.map(({ id, label, icon: Icon }) => (
+                <TabsTrigger key={id} value={id} className="flex items-center gap-1.5 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                  <Icon className="w-3.5 h-3.5" /> {label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            <div className="text-xs text-muted-foreground px-1 mt-3 mb-1 font-medium">GOD MODE TOOLS</div>
+            <TabsList className="grid grid-cols-5 w-full bg-yellow-50 border border-yellow-200">
+              {TAB_ROW2.map(({ id, label, icon: Icon }) => (
+                <TabsTrigger key={id} value={id} className="flex items-center gap-1.5 text-xs data-[state=active]:bg-yellow-400 data-[state=active]:text-black data-[state=active]:shadow-sm">
+                  <Icon className="w-3.5 h-3.5" /> {label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
 
           {/* ── APP INFO ── */}
           <TabsContent value="app-info">
@@ -341,30 +1130,27 @@ export default function DevStudio() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Application Name</Label>
-                        <Input value={localAppInfo.name} onChange={e => setLocalAppInfo({ ...localAppInfo, name: e.target.value })} placeholder="App name" data-testid="input-app-name" />
+                        <Input value={localAppInfo.name} onChange={e => setLocalAppInfo({ ...localAppInfo, name: e.target.value })} placeholder="App name" />
                       </div>
                       <div className="space-y-2">
                         <Label>Subtitle</Label>
-                        <Input value={localAppInfo.subtitle} onChange={e => setLocalAppInfo({ ...localAppInfo, subtitle: e.target.value })} placeholder="Subtitle" data-testid="input-app-subtitle" />
+                        <Input value={localAppInfo.subtitle} onChange={e => setLocalAppInfo({ ...localAppInfo, subtitle: e.target.value })} placeholder="Subtitle" />
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Logo Symbol</Label>
-                        <Input value={localAppInfo.logoSymbol} onChange={e => setLocalAppInfo({ ...localAppInfo, logoSymbol: e.target.value })} placeholder="Logo character/symbol" maxLength={4} />
+                        <Input value={localAppInfo.logoSymbol} onChange={e => setLocalAppInfo({ ...localAppInfo, logoSymbol: e.target.value })} placeholder="Logo character" maxLength={4} />
                       </div>
                     </div>
-                    <div className="flex justify-end pt-2">
-                      <Button onClick={() => saveAppInfoMutation.mutate(localAppInfo)} disabled={saveAppInfoMutation.isPending} data-testid="button-save-app-info">
-                        {saveAppInfoMutation.isPending ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                        Save App Info
+                    <div className="flex justify-end">
+                      <Button onClick={() => saveAppInfoMutation.mutate(localAppInfo)} disabled={saveAppInfoMutation.isPending}>
+                        {saveAppInfoMutation.isPending ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />} Save App Info
                       </Button>
                     </div>
                   </CardContent>
                 </Card>
               </div>
-
-              {/* Preview Panel */}
               <div className="space-y-4">
                 <Card>
                   <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Eye className="w-4 h-4" /> Live Preview</CardTitle></CardHeader>
@@ -384,16 +1170,10 @@ export default function DevStudio() {
                     </div>
                   </CardContent>
                 </Card>
-
                 <Card>
                   <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Sparkles className="w-4 h-4" /> System Info</CardTitle></CardHeader>
                   <CardContent className="space-y-2">
-                    {[
-                      ["Version", "1.0.0"],
-                      ["Storage", "In-Memory"],
-                      ["Auth", "Replit Auth"],
-                      ["Framework", "React 18 + Express"],
-                    ].map(([k, v]) => (
+                    {[["Version", "2.0 GOD Mode"], ["Storage", "In-Memory"], ["Devotees", "20"], ["Families", "6"], ["Events", "12"]].map(([k, v]) => (
                       <div key={k} className="flex justify-between text-xs">
                         <span className="text-muted-foreground">{k}</span>
                         <Badge variant="outline" className="text-xs">{v}</Badge>
@@ -405,33 +1185,27 @@ export default function DevStudio() {
             </div>
           </TabsContent>
 
-          {/* ── THEME ── */}
+          {/* ── THEME STUDIO ── */}
           <TabsContent value="theme">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-6">
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2"><Paintbrush className="w-5 h-5 text-primary" /> Theme Presets</CardTitle>
-                    <CardDescription>Choose a preset or customize individual colors below</CardDescription>
+                    <CardDescription>8 ready-made themes — click to preview instantly</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                       {THEME_PRESETS.map(preset => (
-                        <button
-                          key={preset.id}
-                          onClick={() => applyPreset(preset)}
-                          className={`group relative p-3 rounded-lg border-2 text-left transition-all hover:scale-[1.02] ${localTheme?.activePreset === preset.id ? 'border-primary shadow-md' : 'border-border hover:border-primary/50'}`}
-                          data-testid={`button-preset-${preset.id}`}
-                        >
+                        <button key={preset.id} onClick={() => applyPreset(preset)}
+                          className={`group relative p-3 rounded-lg border-2 text-left transition-all hover:scale-[1.02] ${localTheme?.activePreset === preset.id ? 'border-primary shadow-md' : 'border-border hover:border-primary/50'}`}>
                           <div className="flex gap-1 mb-2">
                             <div className="w-4 h-4 rounded-full" style={{ background: `hsl(${preset.primary})` }} />
                             <div className="w-4 h-4 rounded-full" style={{ background: `hsl(${preset.secondary})` }} />
                             <div className="w-4 h-4 rounded-full" style={{ background: `hsl(${preset.accent})` }} />
                           </div>
                           <p className="text-xs font-medium truncate">{preset.label}</p>
-                          {localTheme?.activePreset === preset.id && (
-                            <div className="absolute top-1.5 right-1.5"><Check className="w-3 h-3 text-primary" /></div>
-                          )}
+                          {localTheme?.activePreset === preset.id && <div className="absolute top-1.5 right-1.5"><Check className="w-3 h-3 text-primary" /></div>}
                         </button>
                       ))}
                     </div>
@@ -442,20 +1216,17 @@ export default function DevStudio() {
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <div>
-                        <CardTitle className="flex items-center gap-2"><Sliders className="w-5 h-5 text-primary" /> Custom Colors</CardTitle>
-                        <CardDescription>Fine-tune individual color values (HSL format)</CardDescription>
+                        <CardTitle className="flex items-center gap-2"><Sliders className="w-5 h-5 text-primary" /> Custom Color Overrides</CardTitle>
+                        <CardDescription>Fine-tune individual HSL color values</CardDescription>
                       </div>
                       <div className="flex items-center gap-2">
                         <Label className="text-sm">Enable Custom</Label>
-                        <Switch
-                          checked={localTheme?.useCustom || false}
+                        <Switch checked={localTheme?.useCustom || false}
                           onCheckedChange={checked => {
                             const newT = { ...localTheme, useCustom: checked };
                             setLocalTheme(newT);
                             if (checked && localTheme?.customColors) applyThemePreview(localTheme.customColors);
-                          }}
-                          data-testid="switch-custom-theme"
-                        />
+                          }} />
                       </div>
                     </div>
                   </CardHeader>
@@ -463,60 +1234,43 @@ export default function DevStudio() {
                     {localTheme?.useCustom ? (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {["primary", "secondary", "accent", "background", "foreground", "card", "border", "muted"].map(key => (
-                          <ColorSlider
-                            key={key}
-                            label={key.charAt(0).toUpperCase() + key.slice(1)}
+                          <ColorSlider key={key} label={key.charAt(0).toUpperCase() + key.slice(1)}
                             value={localTheme?.customColors?.[key] || "0 0% 50%"}
-                            onChange={v => updateCustomColor(key, v)}
-                          />
+                            onChange={v => updateCustomColor(key, v)} />
                         ))}
                       </div>
                     ) : (
                       <div className="text-center py-8 text-muted-foreground">
                         <Sliders className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                        <p className="text-sm">Enable Custom Colors to override theme color values</p>
+                        <p className="text-sm">Enable Custom Colors to override individual theme values</p>
                       </div>
                     )}
                   </CardContent>
                 </Card>
 
                 <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><Type className="w-5 h-5 text-primary" /> Shape & Spacing</CardTitle>
-                  </CardHeader>
+                  <CardHeader><CardTitle className="flex items-center gap-2"><Type className="w-5 h-5 text-primary" /> Shape & Spacing</CardTitle></CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
                       <div className="flex justify-between">
                         <Label>Border Radius</Label>
                         <code className="text-xs bg-muted px-1 rounded">{localTheme?.borderRadius || "0.5"}rem</code>
                       </div>
-                      <input
-                        type="range" min="0" max="2" step="0.125"
-                        value={localTheme?.borderRadius || "0.5"}
-                        onChange={e => {
-                          const newT = { ...localTheme, borderRadius: e.target.value };
-                          setLocalTheme(newT);
-                          document.documentElement.style.setProperty('--radius', `${e.target.value}rem`);
-                        }}
-                        className="w-full"
-                        data-testid="slider-border-radius"
-                      />
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>Square (0)</span><span>Rounded (1)</span><span>Full (2)</span>
-                      </div>
+                      <input type="range" min="0" max="2" step="0.125" value={localTheme?.borderRadius || "0.5"}
+                        onChange={e => { setLocalTheme({ ...localTheme, borderRadius: e.target.value }); document.documentElement.style.setProperty('--radius', `${e.target.value}rem`); }}
+                        className="w-full" />
+                      <div className="flex justify-between text-xs text-muted-foreground"><span>Square</span><span>Rounded</span><span>Full</span></div>
                     </div>
                   </CardContent>
                 </Card>
 
                 <div className="flex justify-end">
-                  <Button onClick={() => saveThemeMutation.mutate(localTheme)} disabled={saveThemeMutation.isPending} data-testid="button-save-theme">
-                    {saveThemeMutation.isPending ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                    Save Theme
+                  <Button onClick={() => saveThemeMutation.mutate(localTheme)} disabled={saveThemeMutation.isPending}>
+                    {saveThemeMutation.isPending ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />} Save Theme
                   </Button>
                 </div>
               </div>
 
-              {/* Theme preview */}
               <div>
                 <Card className="sticky top-0">
                   <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Eye className="w-4 h-4" /> Color Preview</CardTitle></CardHeader>
@@ -529,7 +1283,7 @@ export default function DevStudio() {
                       <div className="p-3 space-y-2" style={{ background: 'var(--background)' }}>
                         <div className="rounded p-2" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
                           <div className="text-xs font-medium mb-1" style={{ color: 'var(--foreground)' }}>Sample Card</div>
-                          <div className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Content text here</div>
+                          <div className="text-xs" style={{ color: 'var(--muted-foreground)' }}>Devotee profile content</div>
                         </div>
                         <div className="flex gap-2">
                           <div className="flex-1 h-7 rounded text-xs flex items-center justify-center font-medium" style={{ background: 'var(--primary)', color: 'var(--primary-foreground)' }}>Primary</div>
@@ -538,7 +1292,7 @@ export default function DevStudio() {
                       </div>
                     </div>
                     <div className="grid grid-cols-4 gap-1">
-                      {["--primary","--secondary","--accent","--background","--foreground","--card","--border","--muted"].map(v => (
+                      {["--primary", "--secondary", "--accent", "--background", "--foreground", "--card", "--border", "--muted"].map(v => (
                         <div key={v} className="h-6 rounded border border-border" style={{ background: `var(${v})` }} title={v.slice(2)} />
                       ))}
                     </div>
@@ -555,39 +1309,23 @@ export default function DevStudio() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2"><Navigation className="w-5 h-5 text-primary" /> Sidebar Navigation</CardTitle>
-                    <CardDescription>Reorder items, toggle visibility, rename labels, or add new links</CardDescription>
+                    <CardDescription>Reorder, rename, show/hide, or add new pages</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-2">
                     {localNav.map((item, idx) => (
-                      <div key={item.id} className={`flex items-center gap-3 p-3 rounded-lg border ${item.visible ? 'border-border bg-card' : 'border-dashed border-border bg-muted/30 opacity-60'}`} data-testid={`nav-item-${item.id}`}>
+                      <div key={item.id} className={`flex items-center gap-3 p-3 rounded-lg border ${item.visible ? 'border-border bg-card' : 'border-dashed border-border bg-muted/30 opacity-60'}`}>
                         <Move className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                         <div className="flex-1 grid grid-cols-2 gap-2">
-                          <Input
-                            value={item.name}
-                            onChange={e => setLocalNav(prev => prev.map((n, i) => i === idx ? { ...n, name: e.target.value } : n))}
-                            className="h-7 text-sm"
-                            placeholder="Label"
-                          />
-                          <Input
-                            value={item.href}
-                            onChange={e => setLocalNav(prev => prev.map((n, i) => i === idx ? { ...n, href: e.target.value } : n))}
-                            className="h-7 text-sm font-mono"
-                            placeholder="/path"
-                          />
+                          <Input value={item.name} onChange={e => setLocalNav(prev => prev.map((n, i) => i === idx ? { ...n, name: e.target.value } : n))} className="h-7 text-sm" placeholder="Label" />
+                          <Input value={item.href} onChange={e => setLocalNav(prev => prev.map((n, i) => i === idx ? { ...n, href: e.target.value } : n))} className="h-7 text-sm font-mono" placeholder="/path" />
                         </div>
                         <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => moveNavItem(idx, "up")} disabled={idx === 0}>
-                            <ChevronUp className="w-3 h-3" />
-                          </Button>
-                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => moveNavItem(idx, "down")} disabled={idx === localNav.length - 1}>
-                            <ChevronDown className="w-3 h-3" />
-                          </Button>
-                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => toggleNavVisibility(item.id)} title={item.visible ? "Hide" : "Show"}>
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => moveNavItem(idx, "up")} disabled={idx === 0}><ChevronUp className="w-3 h-3" /></Button>
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => moveNavItem(idx, "down")} disabled={idx === localNav.length - 1}><ChevronDown className="w-3 h-3" /></Button>
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setLocalNav(prev => prev.map((n, i) => i === idx ? { ...n, visible: !n.visible } : n))}>
                             {item.visible ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
                           </Button>
-                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => removeNavItem(item.id)}>
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => setLocalNav(prev => prev.filter(n => n.id !== item.id))}><Trash2 className="w-3 h-3" /></Button>
                         </div>
                       </div>
                     ))}
@@ -598,34 +1336,25 @@ export default function DevStudio() {
                   <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Plus className="w-4 h-4 text-primary" /> Add Navigation Item</CardTitle></CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-3 gap-3">
-                      <div className="space-y-1">
-                        <Label className="text-xs">Label</Label>
-                        <Input value={newNavItem.name} onChange={e => setNewNavItem({ ...newNavItem, name: e.target.value })} className="h-8" placeholder="Page Name" data-testid="input-new-nav-name" />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs">Path</Label>
-                        <Input value={newNavItem.href} onChange={e => setNewNavItem({ ...newNavItem, href: e.target.value })} className="h-8 font-mono" placeholder="/my-page" data-testid="input-new-nav-href" />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs">Icon</Label>
+                      <div className="space-y-1"><Label className="text-xs">Label</Label>
+                        <Input value={newNavItem.name} onChange={e => setNewNavItem({ ...newNavItem, name: e.target.value })} className="h-8" placeholder="Page Name" /></div>
+                      <div className="space-y-1"><Label className="text-xs">Path</Label>
+                        <Input value={newNavItem.href} onChange={e => setNewNavItem({ ...newNavItem, href: e.target.value })} className="h-8 font-mono" placeholder="/my-page" /></div>
+                      <div className="space-y-1"><Label className="text-xs">Icon</Label>
                         <Select value={newNavItem.icon} onValueChange={v => setNewNavItem({ ...newNavItem, icon: v })}>
                           <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {ICON_OPTIONS.map(icon => <SelectItem key={icon} value={icon}>{icon}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                          <SelectContent>{ICON_OPTIONS.map(icon => <SelectItem key={icon} value={icon}>{icon}</SelectItem>)}</SelectContent>
+                        </Select></div>
                     </div>
-                    <Button size="sm" className="mt-3" onClick={addNavItem} disabled={!newNavItem.name || !newNavItem.href} data-testid="button-add-nav-item">
+                    <Button size="sm" className="mt-3" onClick={addNavItem} disabled={!newNavItem.name || !newNavItem.href}>
                       <Plus className="w-3.5 h-3.5 mr-1" /> Add Item
                     </Button>
                   </CardContent>
                 </Card>
 
                 <div className="flex justify-end">
-                  <Button onClick={() => saveNavMutation.mutate({ items: localNav })} disabled={saveNavMutation.isPending} data-testid="button-save-navigation">
-                    {saveNavMutation.isPending ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                    Save Navigation
+                  <Button onClick={() => saveNavMutation.mutate({ items: localNav })} disabled={saveNavMutation.isPending}>
+                    {saveNavMutation.isPending ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />} Save Navigation
                   </Button>
                 </div>
               </div>
@@ -662,23 +1391,20 @@ export default function DevStudio() {
             </div>
           </TabsContent>
 
-          {/* ── CUSTOM FIELDS ── */}
-          <TabsContent value="custom-fields">
+          {/* ── SCHEMA / CUSTOM FIELDS ── */}
+          <TabsContent value="fields">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-6">
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2"><Database className="w-5 h-5 text-primary" /> Custom Fields</CardTitle>
-                    <CardDescription>Add additional fields to devotee and other entity profiles. These fields are stored as metadata.</CardDescription>
+                    <CardDescription>Add metadata fields to any entity (devotee, family, event)</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     {localFields.length === 0 && (
-                      <div className="text-center py-6 text-muted-foreground">
-                        <Database className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                        <p className="text-sm">No custom fields defined yet</p>
-                      </div>
+                      <div className="text-center py-6 text-muted-foreground"><Database className="w-8 h-8 mx-auto mb-2 opacity-30" /><p className="text-sm">No custom fields yet</p></div>
                     )}
-                    {localFields.map((field, idx) => (
+                    {localFields.map((field) => (
                       <div key={field.id} className="flex items-start gap-3 p-3 rounded-lg border border-border bg-card">
                         <div className="flex-1 grid grid-cols-2 gap-2">
                           <div className="space-y-0.5">
@@ -689,12 +1415,9 @@ export default function DevStudio() {
                             <Badge variant="outline" className="text-xs capitalize">{field.type}</Badge>
                             <Badge variant="outline" className="text-xs capitalize">{field.entity}</Badge>
                             {field.required && <Badge className="text-xs">Required</Badge>}
-                            {field.type === "dropdown" && field.options && (
-                              <span className="text-xs text-muted-foreground">{field.options.length} options</span>
-                            )}
                           </div>
                         </div>
-                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => removeField(field.id)} data-testid={`button-delete-field-${field.id}`}>
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => setLocalFields(prev => prev.filter(f => f.id !== field.id))}>
                           <Trash2 className="w-3 h-3" />
                         </Button>
                       </div>
@@ -703,24 +1426,17 @@ export default function DevStudio() {
                 </Card>
 
                 <Card>
-                  <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Plus className="w-4 h-4 text-primary" /> Add Custom Field</CardTitle></CardHeader>
+                  <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Plus className="w-4 h-4 text-primary" /> Add Field</CardTitle></CardHeader>
                   <CardContent className="space-y-3">
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <Label className="text-xs">Field Label</Label>
-                        <Input value={newField.label} onChange={e => setNewField({ ...newField, label: e.target.value })} className="h-8" placeholder="e.g. Spiritual Name" data-testid="input-new-field-label" />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs">Field Type</Label>
+                      <div className="space-y-1"><Label className="text-xs">Field Label</Label>
+                        <Input value={newField.label} onChange={e => setNewField({ ...newField, label: e.target.value })} className="h-8" placeholder="e.g. Spiritual Name" /></div>
+                      <div className="space-y-1"><Label className="text-xs">Field Type</Label>
                         <Select value={newField.type} onValueChange={v => setNewField({ ...newField, type: v })}>
                           <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {FIELD_TYPES.map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs">Entity</Label>
+                          <SelectContent>{FIELD_TYPES.map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}</SelectContent>
+                        </Select></div>
+                      <div className="space-y-1"><Label className="text-xs">Entity</Label>
                         <Select value={newField.entity} onValueChange={v => setNewField({ ...newField, entity: v })}>
                           <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
                           <SelectContent>
@@ -728,53 +1444,36 @@ export default function DevStudio() {
                             <SelectItem value="family">Family</SelectItem>
                             <SelectItem value="event">Event</SelectItem>
                           </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs">Placeholder</Label>
-                        <Input value={newField.placeholder} onChange={e => setNewField({ ...newField, placeholder: e.target.value })} className="h-8" placeholder="Hint text" />
-                      </div>
+                        </Select></div>
+                      <div className="space-y-1"><Label className="text-xs">Placeholder</Label>
+                        <Input value={newField.placeholder} onChange={e => setNewField({ ...newField, placeholder: e.target.value })} className="h-8" placeholder="Hint text" /></div>
                       {newField.type === "dropdown" && (
-                        <div className="col-span-2 space-y-1">
-                          <Label className="text-xs">Options (comma-separated)</Label>
-                          <Input value={newField.options} onChange={e => setNewField({ ...newField, options: e.target.value })} className="h-8" placeholder="Option A, Option B, Option C" data-testid="input-new-field-options" />
-                        </div>
+                        <div className="col-span-2 space-y-1"><Label className="text-xs">Options (comma-separated)</Label>
+                          <Input value={newField.options} onChange={e => setNewField({ ...newField, options: e.target.value })} className="h-8" placeholder="Option A, Option B" /></div>
                       )}
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Switch checked={newField.required} onCheckedChange={v => setNewField({ ...newField, required: v })} data-testid="switch-field-required" />
+                        <Switch checked={newField.required} onCheckedChange={v => setNewField({ ...newField, required: v })} />
                         <Label className="text-sm">Required field</Label>
                       </div>
-                      <Button size="sm" onClick={addCustomField} disabled={!newField.label} data-testid="button-add-custom-field">
-                        <Plus className="w-3.5 h-3.5 mr-1" /> Add Field
-                      </Button>
+                      <Button size="sm" onClick={addCustomField} disabled={!newField.label}><Plus className="w-3.5 h-3.5 mr-1" /> Add Field</Button>
                     </div>
                   </CardContent>
                 </Card>
 
                 <div className="flex justify-end">
-                  <Button onClick={() => saveFieldsMutation.mutate(localFields)} disabled={saveFieldsMutation.isPending} data-testid="button-save-fields">
-                    {saveFieldsMutation.isPending ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                    Save Custom Fields
+                  <Button onClick={() => saveFieldsMutation.mutate(localFields)} disabled={saveFieldsMutation.isPending}>
+                    {saveFieldsMutation.isPending ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />} Save Fields
                   </Button>
                 </div>
               </div>
 
               <div>
                 <Card>
-                  <CardHeader><CardTitle className="text-sm">Field Types Guide</CardTitle></CardHeader>
+                  <CardHeader><CardTitle className="text-sm">Field Types</CardTitle></CardHeader>
                   <CardContent className="space-y-2">
-                    {[
-                      { t: "text", d: "Short text string" },
-                      { t: "number", d: "Numeric value" },
-                      { t: "date", d: "Date picker" },
-                      { t: "dropdown", d: "Select from options" },
-                      { t: "boolean", d: "Yes/No toggle" },
-                      { t: "email", d: "Email address" },
-                      { t: "phone", d: "Phone number" },
-                      { t: "textarea", d: "Multi-line text" },
-                    ].map(({ t, d }) => (
+                    {[{ t: "text", d: "Short string" }, { t: "number", d: "Numeric value" }, { t: "date", d: "Date picker" }, { t: "dropdown", d: "Select options" }, { t: "boolean", d: "Yes/No toggle" }, { t: "email", d: "Email address" }, { t: "phone", d: "Phone number" }, { t: "textarea", d: "Multi-line text" }].map(({ t, d }) => (
                       <div key={t} className="flex items-center justify-between">
                         <Badge variant="outline" className="text-xs capitalize">{t}</Badge>
                         <span className="text-xs text-muted-foreground">{d}</span>
@@ -786,13 +1485,13 @@ export default function DevStudio() {
             </div>
           </TabsContent>
 
-          {/* ── ROLES ── */}
+          {/* ── ACCESS CONTROL / ROLES ── */}
           <TabsContent value="roles">
             <div className="space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2"><Shield className="w-5 h-5 text-primary" /> Role-Based Access Profiles</CardTitle>
-                  <CardDescription>Configure which pages and capabilities each role has access to</CardDescription>
+                  <CardDescription>Configure page visibility and permissions for each role</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {localRoles && Object.entries(localRoles).map(([role, profile]: [string, any]) => (
@@ -801,32 +1500,19 @@ export default function DevStudio() {
                         <Badge className="capitalize text-sm px-3 py-1">{profile.label || role}</Badge>
                         <div className="flex items-center gap-4 ml-auto">
                           <div className="flex items-center gap-2">
-                            <Switch
-                              checked={profile.canEdit}
-                              onCheckedChange={v => setLocalRoles((prev: any) => ({ ...prev, [role]: { ...prev[role], canEdit: v } }))}
-                              data-testid={`switch-role-${role}-edit`}
-                            />
+                            <Switch checked={profile.canEdit} onCheckedChange={v => setLocalRoles((prev: any) => ({ ...prev, [role]: { ...prev[role], canEdit: v } }))} />
                             <Label className="text-xs">Can Edit</Label>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Switch
-                              checked={profile.canDelete}
-                              onCheckedChange={v => setLocalRoles((prev: any) => ({ ...prev, [role]: { ...prev[role], canDelete: v } }))}
-                              data-testid={`switch-role-${role}-delete`}
-                            />
+                            <Switch checked={profile.canDelete} onCheckedChange={v => setLocalRoles((prev: any) => ({ ...prev, [role]: { ...prev[role], canDelete: v } }))} />
                             <Label className="text-xs">Can Delete</Label>
                           </div>
                         </div>
                       </div>
                       <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2">
                         {ALL_PAGES.map(page => (
-                          <label key={page.id} className="flex items-center gap-1.5 cursor-pointer" data-testid={`checkbox-role-${role}-${page.id}`}>
-                            <input
-                              type="checkbox"
-                              checked={profile.visiblePages?.includes(page.id)}
-                              onChange={() => toggleRolePage(role, page.id)}
-                              className="rounded"
-                            />
+                          <label key={page.id} className="flex items-center gap-1.5 cursor-pointer">
+                            <input type="checkbox" checked={profile.visiblePages?.includes(page.id)} onChange={() => toggleRolePage(role, page.id)} className="rounded" />
                             <span className="text-xs">{page.label}</span>
                           </label>
                         ))}
@@ -835,9 +1521,8 @@ export default function DevStudio() {
                     </div>
                   ))}
                   <div className="flex justify-end pt-2">
-                    <Button onClick={() => saveRolesMutation.mutate(localRoles)} disabled={saveRolesMutation.isPending} data-testid="button-save-roles">
-                      {saveRolesMutation.isPending ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                      Save Role Profiles
+                    <Button onClick={() => saveRolesMutation.mutate(localRoles)} disabled={saveRolesMutation.isPending}>
+                      {saveRolesMutation.isPending ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />} Save Roles
                     </Button>
                   </div>
                 </CardContent>
@@ -845,128 +1530,90 @@ export default function DevStudio() {
             </div>
           </TabsContent>
 
-          {/* ── CONFIG ── */}
-          <TabsContent value="config">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Export / Import */}
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><Download className="w-5 h-5 text-primary" /> Export Configuration</CardTitle>
-                    <CardDescription>Download the complete app configuration as an encrypted JSON file for backup or migration</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="bg-muted rounded-lg p-4 text-sm space-y-1.5">
-                      {["App Info (name, subtitle, logo)", "Navigation items and order", "Theme colors and settings", "Custom fields schema", "Role access profiles"].map(item => (
-                        <div key={item} className="flex items-center gap-2 text-muted-foreground">
-                          <Check className="w-3 h-3 text-green-500" /> {item}
-                        </div>
-                      ))}
-                    </div>
-                    <Button className="w-full" onClick={handleExport} data-testid="button-export-config">
-                      <Download className="w-4 h-4 mr-2" /> Download Config JSON
-                    </Button>
-                  </CardContent>
-                </Card>
+          {/* ── GOD MODE: DATA BROWSER ── */}
+          <TabsContent value="data-browser">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Table className="w-5 h-5 text-yellow-500" /> Data Browser — Full Record Access
+                  <Badge className="bg-yellow-100 text-yellow-800 text-xs">GOD MODE</Badge>
+                </CardTitle>
+                <CardDescription>Browse, edit, and delete any record across all database entities. Select rows for bulk operations.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <DataBrowser />
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><Upload className="w-5 h-5 text-primary" /> Import Configuration</CardTitle>
-                    <CardDescription>Paste a previously exported config JSON to restore settings</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <Textarea
-                      value={importJson}
-                      onChange={e => setImportJson(e.target.value)}
-                      placeholder='Paste exported config JSON here...'
-                      className="font-mono text-xs h-36"
-                      data-testid="textarea-import-config"
-                    />
-                    <div className="flex gap-2">
-                      <Button className="flex-1" onClick={handleImport} disabled={!importJson || importMutation.isPending} data-testid="button-import-config">
-                        {importMutation.isPending ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
-                        Import Config
-                      </Button>
-                      <Button variant="outline" onClick={() => setImportJson("")}>Clear</Button>
-                    </div>
-                  </CardContent>
-                </Card>
+          {/* ── GOD MODE: RELATIONAL MAP ── */}
+          <TabsContent value="relational-map">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <GitBranch className="w-5 h-5 text-yellow-500" /> Relational Data Manager
+                  <Badge className="bg-yellow-100 text-yellow-800 text-xs">GOD MODE</Badge>
+                </CardTitle>
+                <CardDescription>Visualize and manage relationships between devotees, families, mentors, and more.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <RelationalMap />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ── GOD MODE: MACRO STUDIO ── */}
+          <TabsContent value="macros">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-yellow-500" /> Macro Studio — Automation Engine
+                  <Badge className="bg-yellow-100 text-yellow-800 text-xs">GOD MODE</Badge>
+                </CardTitle>
+                <CardDescription>Record multi-step automated sequences and replay them with one click.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <MacroStudio />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ── GOD MODE: AUDIT TRAIL ── */}
+          <TabsContent value="audit-log">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-yellow-500" /> Audit Trail — Change History
+                  <Badge className="bg-yellow-100 text-yellow-800 text-xs">GOD MODE</Badge>
+                </CardTitle>
+                <CardDescription>Complete log of every data change made during this session, with before/after values.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AuditLog />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ── DEV OPS: EXPORT / IMPORT / SNAPSHOTS ── */}
+          <TabsContent value="devops">
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <FileJson className="w-5 h-5 text-primary" />
+                <h3 className="font-semibold">Dev Ops — Export, Import & Backup</h3>
               </div>
-
-              {/* Snapshots */}
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><History className="w-5 h-5 text-primary" /> Config Snapshots</CardTitle>
-                    <CardDescription>Save the current config state and restore it later (up to 10 snapshots)</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex gap-2">
-                      <Input
-                        value={snapshotName}
-                        onChange={e => setSnapshotName(e.target.value)}
-                        placeholder="Snapshot name (optional)"
-                        className="flex-1"
-                        data-testid="input-snapshot-name"
-                      />
-                      <Button onClick={() => snapshotMutation.mutate(snapshotName)} disabled={snapshotMutation.isPending} data-testid="button-save-snapshot">
-                        {snapshotMutation.isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                      </Button>
-                    </div>
-
-                    <ScrollArea className="h-64">
-                      {(!config?.snapshots || config.snapshots.length === 0) ? (
-                        <div className="text-center py-8 text-muted-foreground">
-                          <History className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                          <p className="text-sm">No snapshots yet. Save one to get started.</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {config.snapshots.map((snap: any) => (
-                            <div key={snap.id} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card">
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium truncate">{snap.name}</p>
-                                <p className="text-xs text-muted-foreground">{new Date(snap.createdAt).toLocaleString()}</p>
-                              </div>
-                              <Button
-                                size="sm" variant="outline" className="h-7 text-xs"
-                                onClick={() => restoreMutation.mutate(snap.id)}
-                                disabled={restoreMutation.isPending}
-                                data-testid={`button-restore-${snap.id}`}
-                              >
-                                <RotateCcw className="w-3 h-3 mr-1" /> Restore
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </ScrollArea>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><FileJson className="w-5 h-5 text-primary" /> Live Config View</CardTitle>
-                    <CardDescription>Read-only view of current config state</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="relative">
-                      <Button
-                        size="sm" variant="ghost" className="absolute top-2 right-2 h-6 text-xs z-10"
-                        onClick={() => { navigator.clipboard.writeText(JSON.stringify(config, null, 2)); toast({ title: "Copied to clipboard" }); }}
-                        data-testid="button-copy-config"
-                      >
-                        <Copy className="w-3 h-3 mr-1" /> Copy
-                      </Button>
-                      <ScrollArea className="h-48">
-                        <pre className="text-xs font-mono text-muted-foreground bg-muted p-3 rounded-lg overflow-x-auto">
-                          {JSON.stringify({ appInfo: config?.appInfo, navigation: { itemCount: config?.navigation?.items?.length }, theme: config?.theme, customFieldCount: config?.customFields?.length, roleProfiles: Object.keys(config?.roleProfiles || {}) }, null, 2)}
-                        </pre>
-                      </ScrollArea>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+              <DataExport
+                config={config}
+                importJson={importJson}
+                setImportJson={setImportJson}
+                handleImport={handleImport}
+                importMutation={importMutation}
+                handleExport={handleExport}
+                snapshotName={snapshotName}
+                setSnapshotName={setSnapshotName}
+                snapshotMutation={snapshotMutation}
+                restoreMutation={restoreMutation}
+                toast={toast}
+              />
             </div>
           </TabsContent>
         </Tabs>
