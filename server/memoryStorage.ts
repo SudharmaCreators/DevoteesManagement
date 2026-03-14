@@ -30,6 +30,19 @@ import {
 } from "@shared/schema";
 import { type IStorage } from "./storage";
 
+// Notification type (not in DB schema, kept in memory)
+export interface Notification {
+  id: number;
+  userId: string;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'error';
+  isRead: boolean;
+  relatedEntity?: string;
+  relatedId?: number;
+  createdAt: Date;
+}
+
 // In-memory storage implementation
 export class MemoryStorage implements IStorage {
   private users: Map<string, User> = new Map();
@@ -46,6 +59,7 @@ export class MemoryStorage implements IStorage {
   private sabhaLocations: Map<number, SabhaLocation> = new Map();
   private dashboardLayouts: Map<number, DashboardLayout> = new Map();
   private userPreferences: Map<string, UserPreferences> = new Map();
+  public notifications: Map<number, Notification> = new Map();
 
   // Counter for auto-incrementing IDs
   private counters = {
@@ -61,6 +75,7 @@ export class MemoryStorage implements IStorage {
     mandals: 1,
     sabhaLocations: 1,
     dashboardLayouts: 1,
+    notifications: 1,
   };
 
   constructor() {
@@ -148,11 +163,29 @@ export class MemoryStorage implements IStorage {
     sampleEvents.forEach(e => { this.events.set(e.id, e); this.counters.events = Math.max(this.counters.events, e.id + 1); });
 
     // ─── MENTORS ───────────────────────────────────────────────────────────
-    const sampleMentors: Mentor[] = [
-      { id: 1, devoteeId: 8, specialization: "Bhagavad Gita and Vedic Philosophy", experience: 20, bio: "Prof. Nilesh Desai has been teaching Sanskrit and Vedic philosophy for 20 years at M.S. University. He is the primary Gita study circle facilitator.", isActive: true, createdAt: d(2500), updatedAt: now },
-      { id: 2, devoteeId: 5, specialization: "Community Building and Event Management", experience: 10, bio: "Suresh Patel brings 10 years of experience in large-scale devotional event management. He mentors new volunteers on logistics and community engagement.", isActive: true, createdAt: d(2000), updatedAt: now },
+    const sampleMentors: any[] = [
+      { id: 1, devoteeId: 8, specialization: "Bhagavad Gita and Vedic Philosophy", experience: "20 years", qualifications: "M.A. Sanskrit, Ph.D. Vedic Studies", availableHours: "Weekends 9am-1pm", contactPreference: "whatsapp", maxMentees: 20, currentMentees: 12, isActive: true, createdAt: d(2500), updatedAt: now },
+      { id: 2, devoteeId: 5, specialization: "Community Building and Event Management", experience: "10 years", qualifications: "MBA, Certified Event Manager", availableHours: "Mon/Wed/Fri evenings", contactPreference: "phone", maxMentees: 15, currentMentees: 8, isActive: true, createdAt: d(2000), updatedAt: now },
+      { id: 3, devoteeId: 1, specialization: "Kirtan and Devotional Music", experience: "15 years", qualifications: "Sangit Visharad, Harmonium & Mridanga certified", availableHours: "Daily 6am-8am, Sundays", contactPreference: "phone", maxMentees: 25, currentMentees: 18, isActive: true, createdAt: d(1800), updatedAt: now },
+      { id: 4, devoteeId: 19, specialization: "Vocal Training and Bhajan", experience: "10 years", qualifications: "Hindustani Classical Vocal - Senior Grade", availableHours: "Tue/Thu evenings, Sundays", contactPreference: "phone", maxMentees: 15, currentMentees: 9, isActive: true, createdAt: d(1600), updatedAt: now },
+      { id: 5, devoteeId: 16, specialization: "Ayurveda, Yoga and Health", experience: "6 years", qualifications: "BAMS, Yoga Instructor Certificate", availableHours: "Weekends, Wed evenings", contactPreference: "whatsapp", maxMentees: 20, currentMentees: 14, isActive: true, createdAt: d(1400), updatedAt: now },
+      { id: 6, devoteeId: 11, specialization: "Finance, Accounts and Donations Management", experience: "8 years", qualifications: "CA, CFA", availableHours: "Weekends 10am-2pm", contactPreference: "email", maxMentees: 10, currentMentees: 5, isActive: true, createdAt: d(1200), updatedAt: now },
+      { id: 7, devoteeId: 20, specialization: "Legal Affairs and Trust Management", experience: "7 years", qualifications: "LLB, Advocate High Court", availableHours: "Sat/Sun 4pm-7pm", contactPreference: "phone", maxMentees: 8, currentMentees: 4, isActive: true, createdAt: d(1000), updatedAt: now },
+      { id: 8, devoteeId: 6, specialization: "Seva Coordination and Youth Programs", experience: "5 years", qualifications: "B.Ed., Youth Welfare Certificate", availableHours: "Fridays, Weekends", contactPreference: "whatsapp", maxMentees: 30, currentMentees: 22, isActive: true, createdAt: d(800), updatedAt: now },
+      { id: 9, devoteeId: 9, specialization: "Children's Bal Satsang and Education", experience: "4 years", qualifications: "M.Ed., Bal Sanstha Training", availableHours: "Sundays 10am-1pm", contactPreference: "phone", maxMentees: 20, currentMentees: 16, isActive: true, createdAt: d(600), updatedAt: now },
+      { id: 10, devoteeId: 18, specialization: "Banking, Finance and Corpus Fund", experience: "35 years banking", qualifications: "Retired Bank Manager, JAIIB/CAIIB", availableHours: "Weekdays 10am-12pm", contactPreference: "phone", maxMentees: 5, currentMentees: 2, isActive: true, createdAt: d(400), updatedAt: now },
     ];
-    sampleMentors.forEach(m => { this.mentors.set(m.id, m); this.counters.mentors = Math.max(this.counters.mentors, m.id + 1); });
+    sampleMentors.forEach(m => { this.mentors.set(m.id, m as any); this.counters.mentors = Math.max(this.counters.mentors, m.id + 1); });
+
+    // ─── USERS (admin/manager/user roles) ─────────────────────────────────
+    const sampleUsers: User[] = [
+      { id: "dev-user-1", role: "developer", email: "dev@madhavparivar.org", firstName: "Dev", lastName: "Admin", profileImageUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=DevAdmin&backgroundColor=b6e3f4", isActive: true, createdAt: d(3000), updatedAt: now },
+      { id: "admin-user-1", role: "admin", email: "admin@madhavparivar.org", firstName: "Ramesh", lastName: "Sharma", profileImageUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Ramesh&backgroundColor=b6e3f4", isActive: true, createdAt: d(1800), updatedAt: now },
+      { id: "manager-user-1", role: "manager", email: "manager@madhavparivar.org", firstName: "Suresh", lastName: "Patel", profileImageUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Suresh&backgroundColor=ffdfbf", isActive: true, createdAt: d(1500), updatedAt: now },
+      { id: "user-1", role: "user", email: "vikram.mehta@email.com", firstName: "Vikram", lastName: "Mehta", profileImageUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Vikram&backgroundColor=c0aede", isActive: true, createdAt: d(900), updatedAt: now },
+      { id: "user-2", role: "user", email: "nilesh.desai@email.com", firstName: "Nilesh", lastName: "Desai", profileImageUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Nilesh&backgroundColor=ffd5dc", isActive: true, createdAt: d(1200), updatedAt: now },
+    ];
+    sampleUsers.forEach(u => { this.users.set(u.id, u); });
 
     // ─── ATTENDANCE ────────────────────────────────────────────────────────
     const sampleAttendance: Attendance[] = [];
@@ -199,13 +232,15 @@ export class MemoryStorage implements IStorage {
       for (let month = 0; month < 12; month++) {
         const dt = new Date(now); dt.setMonth(dt.getMonth() - month);
         const variance = Math.floor(Math.random() * 5) * 500;
-        sampleDonations.push({ id: donId++, devoteeId: id, amount: String(baseAmt + variance), donationType: donTypes[month % donTypes.length], donationDate: dt, paymentMethod: payMethods[month % payMethods.length], reference: "DON-" + String(donId).padStart(4, "0"), notes: month === 0 ? "Regular monthly contribution" : null, anonymousDonation: false, isActive: true, createdAt: dt, updatedAt: dt });
+        const rid = donId;
+        sampleDonations.push({ id: donId++, devoteeId: id, amount: String(baseAmt + variance), currency: 'INR', donationType: donTypes[month % donTypes.length], purpose: donTypes[month % donTypes.length], donationDate: dt, paymentMethod: payMethods[month % payMethods.length], receiptNumber: "RCP-" + String(rid).padStart(4, "0"), transactionId: null, taxDeductible: false, notes: month === 0 ? "Regular monthly contribution" : null, anonymousDonation: false, recordedBy: 'admin', status: 'received', createdAt: dt } as any);
       }
     });
 
     [2, 6, 9, 16, 18, 19, 20].forEach((dvId, i) => {
       [90, 180, 270, 365].forEach((daysAgo, j) => {
-        sampleDonations.push({ id: donId++, devoteeId: dvId, amount: String((Math.floor(Math.random() * 6) + 1) * 500), donationType: donTypes[(i + j) % donTypes.length], donationDate: d(daysAgo), paymentMethod: j % 2 === 0 ? "Cash" : "UPI", reference: "DON-" + String(donId).padStart(4, "0"), notes: null, anonymousDonation: false, isActive: true, createdAt: d(daysAgo), updatedAt: d(daysAgo) });
+        const rid = donId;
+        sampleDonations.push({ id: donId++, devoteeId: dvId, amount: String((Math.floor(Math.random() * 6) + 1) * 500), currency: 'INR', donationType: donTypes[(i + j) % donTypes.length], purpose: donTypes[(i + j) % donTypes.length], donationDate: d(daysAgo), paymentMethod: j % 2 === 0 ? "Cash" : "UPI", receiptNumber: "RCP-" + String(rid).padStart(4, "0"), transactionId: null, taxDeductible: false, notes: null, anonymousDonation: false, recordedBy: 'admin', status: 'received', createdAt: d(daysAgo) } as any);
       });
     });
 
@@ -214,8 +249,13 @@ export class MemoryStorage implements IStorage {
       { dvId: 5, amt: 50000, type: "Building Fund", method: "Cheque", note: "Donation for new hall construction", dAgo: 200 },
       { dvId: 5, amt: 25000, type: "Festival Fund", method: "Cheque", note: "Navratri stage and sound sponsorship", dAgo: 195 },
       { dvId: 11, amt: 15000, type: "Festival Fund", method: "Online Transfer", note: "Janmashtami stage and sound", dAgo: 50 },
+      { dvId: 8, amt: 10000, type: "Anna Seva", method: "Online Transfer", note: "Monthly prasad contribution", dAgo: 30 },
+      { dvId: 1, amt: 5000, type: "General Seva", method: "UPI", note: "Annual seva contribution", dAgo: 120 },
+      { dvId: 15, amt: 7500, type: "Medical Camp", method: "Cash", note: "Medical camp sponsorship", dAgo: 80 },
+      { dvId: 19, amt: 3000, type: "Festival Fund", method: "Cash", note: "Janmashtami kirtan program", dAgo: 60 },
     ].forEach(don => {
-      sampleDonations.push({ id: donId++, devoteeId: don.dvId, amount: String(don.amt), donationType: don.type, donationDate: d(don.dAgo), paymentMethod: don.method, reference: "DON-" + String(donId).padStart(4, "0"), notes: don.note, anonymousDonation: false, isActive: true, createdAt: d(don.dAgo), updatedAt: d(don.dAgo) });
+      const rid = donId;
+      sampleDonations.push({ id: donId++, devoteeId: don.dvId, amount: String(don.amt), currency: 'INR', donationType: don.type, purpose: don.type, donationDate: d(don.dAgo), paymentMethod: don.method, receiptNumber: "RCP-" + String(rid).padStart(4, "0"), transactionId: null, taxDeductible: true, notes: don.note, anonymousDonation: false, recordedBy: 'admin', status: 'received', createdAt: d(don.dAgo) } as any);
     });
     sampleDonations.forEach(dn => { this.donations.set(dn.id, dn); this.counters.donations = Math.max(this.counters.donations, dn.id + 1); });
 
@@ -237,7 +277,8 @@ export class MemoryStorage implements IStorage {
         for (let act = 0; act < intensity; act++) {
           const dt2 = new Date(dt); dt2.setDate((act + 1) * 7);
           const actType = volActivities[(month * intensity + act) % volActivities.length];
-          sampleVolunteering.push({ id: volId++, devoteeId: id, activityType: actType, activityDate: dt2, hours: Math.floor(Math.random() * 5) + 2, description: actType + " for monthly event", status: "completed", supervisorId: 8, notes: null, isActive: true, createdAt: dt2, updatedAt: dt2 });
+          const hrs = Math.floor(Math.random() * 5) + 2;
+          sampleVolunteering.push({ id: volId++, devoteeId: id, activityType: actType, startDate: dt2, endDate: dt2, hoursCommitted: hrs, hoursCompleted: hrs, description: actType + " for monthly event", status: "completed", supervisorId: 8, feedback: "Well done", skills: actType, location: "Main Sabha Hall", createdAt: dt2 } as any);
         }
       }
     });
@@ -258,6 +299,19 @@ export class MemoryStorage implements IStorage {
       { id: 3, name: "Radha Niwas Ashram Vadodara", address: "5 Alkapuri, Vadodara 390007", zipCode: "390007", facilities: ["Open courtyard 2000 sq ft", "Sound system", "Dormitory 30 beds", "Full kitchen", "Garden"], createdAt: d(400), updatedAt: now },
     ];
     sampleLocations.forEach(l => { this.sabhaLocations.set(l.id, l); this.counters.sabhaLocations = Math.max(this.counters.sabhaLocations, l.id + 1); });
+
+    // ─── NOTIFICATIONS ─────────────────────────────────────────────────────
+    const sampleNotifications: Notification[] = [
+      { id: 1, userId: "dev-user-1", title: "New Devotee Registered", message: "Paresh Trivedi has been added to the system", type: "success", isRead: false, relatedEntity: "devotee", relatedId: 20, createdAt: d(1) },
+      { id: 2, userId: "dev-user-1", title: "Upcoming Event", message: "Holi Celebration is scheduled in 3 days", type: "info", isRead: false, relatedEntity: "event", relatedId: 1, createdAt: d(2) },
+      { id: 3, userId: "dev-user-1", title: "Donation Received", message: "₹50,000 donation received from Suresh Patel for Building Fund", type: "success", isRead: false, relatedEntity: "donation", createdAt: d(3) },
+      { id: 4, userId: "dev-user-1", title: "Low Attendance Alert", message: "Attendance for last satsang was below 60% - please follow up", type: "warning", isRead: false, relatedEntity: "attendance", createdAt: d(5) },
+      { id: 5, userId: "dev-user-1", title: "Mentor Assignment Needed", message: "5 devotees are without assigned mentors", type: "warning", isRead: true, relatedEntity: "mentor", createdAt: d(7) },
+      { id: 6, userId: "dev-user-1", title: "Event Archived", message: "Diwali Puja 2025 has been automatically archived", type: "info", isRead: true, relatedEntity: "event", relatedId: 10, createdAt: d(10) },
+      { id: 7, userId: "dev-user-1", title: "Profile Update", message: "Ramesh Sharma updated their profile information", type: "info", isRead: true, relatedEntity: "devotee", relatedId: 1, createdAt: d(12) },
+      { id: 8, userId: "dev-user-1", title: "Volunteer Hours Logged", message: "12 new volunteering records logged this week", type: "success", isRead: true, relatedEntity: "volunteering", createdAt: d(14) },
+    ];
+    sampleNotifications.forEach(n => { this.notifications.set(n.id, n); this.counters.notifications = Math.max(this.counters.notifications, n.id + 1); });
   }
 
   // Helper: get devotees by family ID
@@ -861,6 +915,44 @@ export class MemoryStorage implements IStorage {
     return preferences;
   }
 
+  // Notification operations
+  getNotifications(userId?: string): Notification[] {
+    const all = Array.from(this.notifications.values()).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    return userId ? all.filter(n => n.userId === userId || n.userId === "dev-user-1") : all;
+  }
+
+  createNotification(data: Omit<Notification, 'id' | 'createdAt'>): Notification {
+    const id = this.counters.notifications++;
+    const notification: Notification = { ...data, id, createdAt: new Date() };
+    this.notifications.set(id, notification);
+    return notification;
+  }
+
+  markNotificationRead(id: number): Notification | undefined {
+    const n = this.notifications.get(id);
+    if (!n) return undefined;
+    const updated = { ...n, isRead: true };
+    this.notifications.set(id, updated);
+    return updated;
+  }
+
+  markAllNotificationsRead(userId: string): void {
+    this.notifications.forEach((n, id) => {
+      if (n.userId === userId || n.userId === "dev-user-1") {
+        this.notifications.set(id, { ...n, isRead: true });
+      }
+    });
+  }
+
+  deleteNotification(id: number): boolean {
+    return this.notifications.delete(id);
+  }
+
+  // User listing (for admin/manager views)
+  getAllUsers(): User[] {
+    return Array.from(this.users.values());
+  }
+
   // Analytics operations
   async getStats(): Promise<{
     totalDevotees: number;
@@ -872,18 +964,56 @@ export class MemoryStorage implements IStorage {
     const activeFamilies = this.families.size;
     
     const donations = Array.from(this.donations.values());
-    const totalDonations = donations.reduce((sum, donation) => sum + donation.amount, 0);
+    const totalDonations = donations.reduce((sum, donation) => sum + parseFloat(String(donation.amount) || '0'), 0);
     
     const attendanceRecords = Array.from(this.attendance.values());
+    const presentRecords = attendanceRecords.filter(a => (a as any).status === 'present');
     const avgAttendance = attendanceRecords.length > 0 
-      ? attendanceRecords.length / Math.max(this.events.size, 1) 
+      ? Math.round((presentRecords.length / attendanceRecords.length) * 100)
       : 0;
 
     return {
       totalDevotees,
       activeFamilies,
       totalDonations,
-      avgAttendance: Math.round(avgAttendance * 100) / 100,
+      avgAttendance,
     };
+  }
+
+  // Extended analytics: donation trends by month
+  getDonationTrends(): Array<{ month: string; amount: number }> {
+    const donations = Array.from(this.donations.values());
+    const byMonth: Record<string, number> = {};
+    donations.forEach(d => {
+      const date = new Date((d as any).donationDate || d.createdAt);
+      const key = date.toLocaleDateString('en-IN', { month: 'short', year: '2-digit' });
+      byMonth[key] = (byMonth[key] || 0) + parseFloat(String(d.amount) || '0');
+    });
+    return Object.entries(byMonth).map(([month, amount]) => ({ month, amount })).slice(-12);
+  }
+
+  // Extended analytics: attendance trends by month
+  getAttendanceTrends(): Array<{ month: string; present: number; absent: number }> {
+    const records = Array.from(this.attendance.values());
+    const byMonth: Record<string, { present: number; absent: number }> = {};
+    records.forEach(a => {
+      const date = new Date(a.attendanceDate || a.createdAt);
+      const key = date.toLocaleDateString('en-IN', { month: 'short', year: '2-digit' });
+      if (!byMonth[key]) byMonth[key] = { present: 0, absent: 0 };
+      if ((a as any).status === 'present') byMonth[key].present++;
+      else byMonth[key].absent++;
+    });
+    return Object.entries(byMonth).map(([month, data]) => ({ month, ...data })).slice(-12);
+  }
+
+  // Extended analytics: volunteering hours by activity
+  getVolunteeringStats(): Array<{ activity: string; hours: number }> {
+    const records = Array.from(this.volunteering.values());
+    const byActivity: Record<string, number> = {};
+    records.forEach(v => {
+      const act = (v as any).activityType || 'Other';
+      byActivity[act] = (byActivity[act] || 0) + ((v as any).hoursCompleted || (v as any).hours || 0);
+    });
+    return Object.entries(byActivity).map(([activity, hours]) => ({ activity, hours })).sort((a, b) => b.hours - a.hours).slice(0, 8);
   }
 }

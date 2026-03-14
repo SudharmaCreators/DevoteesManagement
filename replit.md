@@ -48,6 +48,15 @@ This is a comprehensive devotional management system built for managing spiritua
 4. **Analytics**: Comprehensive reporting and analytics dashboard
 5. **Bulk Operations**: Mass operations for devotee management
 6. **Export/Import**: Data export and import capabilities
+7. **Developer Studio** (`/dev-studio`): Full app designer with 6 tabs:
+   - **App Info**: Change app name, subtitle, logo symbol with live preview
+   - **Theme Editor**: 8 preset themes + custom HSL color sliders + border radius control
+   - **Navigation Editor**: Reorder/rename/show-hide/add sidebar items with live preview
+   - **Custom Fields**: Define extra fields (text/number/date/dropdown/boolean) for entities
+   - **Role Profiles**: Configure page access and edit/delete permissions per role
+   - **Config**: Export/Import JSON config, snapshot history with restore
+8. **Notifications**: Live notification system with bell icon, mark read/delete
+9. **Dev Mode**: Code `DevelopZ`, yellow banner with quick Dev Studio link
 
 ## Data Flow
 

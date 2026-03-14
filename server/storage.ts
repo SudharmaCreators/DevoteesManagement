@@ -530,10 +530,12 @@ class FallbackStorage implements IStorage {
   private primaryStorage: IStorage;
   private fallbackStorage: IStorage;
   private usingFallback = false;
+  public memStore: MemoryStorage;
 
   constructor() {
-    this.primaryStorage = new MemoryStorage();
-    this.fallbackStorage = new MemoryStorage();
+    this.memStore = new MemoryStorage();
+    this.primaryStorage = this.memStore;
+    this.fallbackStorage = this.memStore;
   }
 
   private async executeWithFallback<T>(operation: (storage: IStorage) => Promise<T>): Promise<T> {

@@ -24,6 +24,7 @@ import Settings from "@/pages/Settings";
 import NotFound from "@/pages/not-found";
 import IDCardGenerator from "@/pages/IDCardGenerator";
 import DevoteeProfilePage from "@/pages/DevoteeProfilePage";
+import DevStudio from "@/pages/DevStudio";
 import { DevModeProvider } from "@/contexts/DevModeContext";
 
 function AppContent() {
@@ -66,6 +67,7 @@ function AppContent() {
           <Route path="/dashboard-designer">
             <Dashboard />
           </Route>
+          <Route path="/dev-studio" component={DevStudio} />
           <Route path="/devotees/:id" component={DevoteeProfilePage} />
           <Route path="/id-cards" component={IDCardGenerator} />
           <Route path="/settings" component={Settings} />

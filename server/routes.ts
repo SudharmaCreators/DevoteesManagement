@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { MemoryStorage } from "./memoryStorage";
 // import { setupAuth, isAuthenticated } from "./replitAuth";
 
 // Mock authentication for development
@@ -517,6 +518,590 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching stats:", error);
       res.status(500).json({ message: "Failed to fetch stats" });
+    }
+  });
+
+  app.get('/api/analytics', isAuthenticated, async (req, res) => {
+    try {
+      const stats = await storage.getStats();
+      const ms = (storage as any).memStore as MemoryStorage;
+      const donationTrends = ms.getDonationTrends ? ms.getDonationTrends() : [];
+      const attendanceTrends = ms.getAttendanceTrends ? ms.getAttendanceTrends() : [];
+      const volunteeringStats = ms.getVolunteeringStats ? ms.getVolunteeringStats() : [];
+      res.json({ stats, donationTrends, attendanceTrends, volunteeringStats });
+    } catch (error) {
+      console.error("Error fetching analytics:", error);
+      res.status(500).json({ message: "Failed to fetch analytics" });
+    }
+  });
+
+  // Extended family routes
+  app.put('/api/families/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validatedData = insertFamilySchema.partial().parse(req.body);
+      const family = await storage.updateFamily(id, validatedData);
+      res.json(family);
+    } catch (error) {
+      console.error("Error updating family:", error);
+      res.status(400).json({ message: "Failed to update family" });
+    }
+  });
+
+  app.delete('/api/families/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteFamily(id);
+      res.status(success ? 204 : 404).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete family" });
+    }
+  });
+
+  // Extended mentor routes
+  app.get('/api/mentors/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const mentor = await storage.getMentor(id);
+      if (!mentor) return res.status(404).json({ message: "Mentor not found" });
+      res.json(mentor);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch mentor" });
+    }
+  });
+
+  app.put('/api/mentors/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const mentor = await storage.updateMentor(id, req.body);
+      res.json(mentor);
+    } catch (error) {
+      console.error("Error updating mentor:", error);
+      res.status(400).json({ message: "Failed to update mentor" });
+    }
+  });
+
+  app.delete('/api/mentors/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteMentor(id);
+      res.status(success ? 204 : 404).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete mentor" });
+    }
+  });
+
+  // Extended donation routes
+  app.put('/api/donations/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const donation = await storage.updateDonation(id, req.body);
+      res.json(donation);
+    } catch (error) {
+      console.error("Error updating donation:", error);
+      res.status(400).json({ message: "Failed to update donation" });
+    }
+  });
+
+  app.delete('/api/donations/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteDonation(id);
+      res.status(success ? 204 : 404).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete donation" });
+    }
+  });
+
+  // Extended volunteering routes
+  app.put('/api/volunteering/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const vol = await storage.updateVolunteering(id, req.body);
+      res.json(vol);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update volunteering record" });
+    }
+  });
+
+  app.delete('/api/volunteering/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteVolunteering(id);
+      res.status(success ? 204 : 404).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete volunteering record" });
+    }
+  });
+
+  // Attendance update/delete
+  app.put('/api/attendance/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const att = await storage.updateAttendance(id, req.body);
+      res.json(att);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update attendance" });
+    }
+  });
+
+  app.delete('/api/attendance/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteAttendance(id);
+      res.status(success ? 204 : 404).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete attendance" });
+    }
+  });
+
+  // Notifications routes
+  app.get('/api/notifications', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub || 'dev-user-1';
+      const ms = (storage as any).memStore as MemoryStorage;
+      const notifications = ms.getNotifications ? ms.getNotifications(userId) : [];
+      res.json(notifications);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
+  app.post('/api/notifications', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub || 'dev-user-1';
+      const ms = (storage as any).memStore as MemoryStorage;
+      const notification = ms.createNotification ? ms.createNotification({ ...req.body, userId }) : null;
+      res.status(201).json(notification);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create notification" });
+    }
+  });
+
+  app.put('/api/notifications/:id/read', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const ms = (storage as any).memStore as MemoryStorage;
+      const notification = ms.markNotificationRead ? ms.markNotificationRead(id) : null;
+      res.json(notification);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to mark notification as read" });
+    }
+  });
+
+  app.put('/api/notifications/read-all', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub || 'dev-user-1';
+      const ms = (storage as any).memStore as MemoryStorage;
+      if (ms.markAllNotificationsRead) ms.markAllNotificationsRead(userId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to mark all notifications as read" });
+    }
+  });
+
+  app.delete('/api/notifications/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const ms = (storage as any).memStore as MemoryStorage;
+      const success = ms.deleteNotification ? ms.deleteNotification(id) : false;
+      res.status(success ? 204 : 404).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete notification" });
+    }
+  });
+
+  // Users management routes (admin/manager)
+  app.get('/api/users', isAuthenticated, async (req, res) => {
+    try {
+      const ms = (storage as any).memStore as MemoryStorage;
+      const users = ms.getAllUsers ? ms.getAllUsers() : [];
+      res.json(users);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.put('/api/users/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = req.params.id;
+      const user = await storage.upsertUser({ id, ...req.body });
+      res.json(user);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update user" });
+    }
+  });
+
+  // Dev mode config (store/retrieve application config)
+  const devConfig: Record<string, any> = {
+    appInfo: {
+      name: "Madhav Parivar",
+      subtitle: "Devotional Community Management",
+      logoSymbol: "॥",
+      logoGradientFrom: "primary",
+      logoGradientTo: "secondary",
+    },
+    navigation: {
+      items: [
+        { id: "dashboard", name: "Dashboard", href: "/", icon: "Home", visible: true, order: 0 },
+        { id: "devotees", name: "Devotees", href: "/devotees", icon: "Users", visible: true, order: 1 },
+        { id: "families", name: "Families", href: "/families", icon: "Building", visible: true, order: 2 },
+        { id: "mentors", name: "Mentors", href: "/mentors", icon: "GraduationCap", visible: true, order: 3 },
+        { id: "attendance", name: "Attendance", href: "/attendance", icon: "Calendar", visible: true, order: 4 },
+        { id: "donations", name: "Donations", href: "/donations", icon: "Heart", visible: true, order: 5 },
+        { id: "events", name: "Events", href: "/events", icon: "CalendarDays", visible: true, order: 6 },
+        { id: "volunteering", name: "Volunteering", href: "/volunteering", icon: "HandHeart", visible: true, order: 7 },
+        { id: "analytics", name: "Analytics", href: "/analytics", icon: "BarChart3", visible: true, order: 8 },
+        { id: "id-cards", name: "ID Card Generator", href: "/id-cards", icon: "CreditCard", visible: true, order: 9 },
+        { id: "settings", name: "Settings", href: "/settings", icon: "Settings", visible: true, order: 10 },
+      ],
+    },
+    theme: {
+      activePreset: "devotional",
+      customColors: {
+        primary: "24 100% 60%",
+        secondary: "343 100% 25%",
+        accent: "51 100% 50%",
+        background: "60 29% 94%",
+        foreground: "210 20% 18%",
+        card: "0 0% 100%",
+        border: "20 5.9% 90%",
+        muted: "54 23% 89%",
+      },
+      borderRadius: "0.5",
+      useCustom: false,
+    },
+    customFields: [
+      { id: "spiritual_name", label: "Spiritual Name", type: "text", entity: "devotee", required: false, placeholder: "Enter spiritual name" },
+      { id: "initiation_date", label: "Initiation Date", type: "date", entity: "devotee", required: false, placeholder: "" },
+      { id: "preferred_seva", label: "Preferred Seva", type: "dropdown", entity: "devotee", required: false, options: ["Puja", "Kitchen", "Outreach", "Education", "Music", "IT Support"], placeholder: "Select seva" },
+    ],
+    roleProfiles: {
+      admin: {
+        label: "Administrator",
+        visiblePages: ["dashboard","devotees","families","mentors","attendance","donations","events","volunteering","analytics","id-cards","settings","dev-studio"],
+        canEdit: true,
+        canDelete: true,
+      },
+      manager: {
+        label: "Manager",
+        visiblePages: ["dashboard","devotees","families","mentors","attendance","donations","events","volunteering","analytics","id-cards"],
+        canEdit: true,
+        canDelete: false,
+      },
+      volunteer: {
+        label: "Volunteer",
+        visiblePages: ["dashboard","devotees","attendance","events"],
+        canEdit: false,
+        canDelete: false,
+      },
+    },
+    snapshots: [] as Array<{ id: string; name: string; createdAt: string; config: any }>,
+  };
+
+  app.get('/api/dev-config', isAuthenticated, async (req, res) => {
+    res.json(devConfig);
+  });
+
+  app.put('/api/dev-config', isAuthenticated, async (req, res) => {
+    Object.assign(devConfig, req.body);
+    res.json(devConfig);
+  });
+
+  app.patch('/api/dev-config/app-info', isAuthenticated, async (req, res) => {
+    devConfig.appInfo = { ...devConfig.appInfo, ...req.body };
+    res.json(devConfig.appInfo);
+  });
+
+  app.patch('/api/dev-config/navigation', isAuthenticated, async (req, res) => {
+    devConfig.navigation = { ...devConfig.navigation, ...req.body };
+    res.json(devConfig.navigation);
+  });
+
+  app.patch('/api/dev-config/theme', isAuthenticated, async (req, res) => {
+    devConfig.theme = { ...devConfig.theme, ...req.body };
+    res.json(devConfig.theme);
+  });
+
+  app.patch('/api/dev-config/custom-fields', isAuthenticated, async (req, res) => {
+    devConfig.customFields = req.body.fields;
+    res.json(devConfig.customFields);
+  });
+
+  app.patch('/api/dev-config/role-profiles', isAuthenticated, async (req, res) => {
+    devConfig.roleProfiles = { ...devConfig.roleProfiles, ...req.body };
+    res.json(devConfig.roleProfiles);
+  });
+
+  app.post('/api/dev-config/snapshot', isAuthenticated, async (req, res) => {
+    const { name } = req.body;
+    const snapshot = {
+      id: `snap_${Date.now()}`,
+      name: name || `Snapshot ${new Date().toLocaleString()}`,
+      createdAt: new Date().toISOString(),
+      config: JSON.parse(JSON.stringify({ appInfo: devConfig.appInfo, navigation: devConfig.navigation, theme: devConfig.theme, customFields: devConfig.customFields, roleProfiles: devConfig.roleProfiles })),
+    };
+    devConfig.snapshots.unshift(snapshot);
+    if (devConfig.snapshots.length > 10) devConfig.snapshots.pop();
+    res.json(snapshot);
+  });
+
+  app.post('/api/dev-config/restore/:snapshotId', isAuthenticated, async (req, res) => {
+    const snap = devConfig.snapshots.find((s: any) => s.id === req.params.snapshotId);
+    if (!snap) return res.status(404).json({ message: "Snapshot not found" });
+    Object.assign(devConfig, snap.config);
+    res.json({ message: "Restored", config: snap.config });
+  });
+
+  app.get('/api/dev-config/export', isAuthenticated, async (req, res) => {
+    const exportData = {
+      version: "1.0",
+      exportedAt: new Date().toISOString(),
+      appInfo: devConfig.appInfo,
+      navigation: devConfig.navigation,
+      theme: devConfig.theme,
+      customFields: devConfig.customFields,
+      roleProfiles: devConfig.roleProfiles,
+    };
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', 'attachment; filename="madhav-parivar-config.json"');
+    res.json(exportData);
+  });
+
+  app.post('/api/dev-config/import', isAuthenticated, async (req, res) => {
+    try {
+      const { appInfo, navigation, theme, customFields, roleProfiles } = req.body;
+      if (appInfo) devConfig.appInfo = appInfo;
+      if (navigation) devConfig.navigation = navigation;
+      if (theme) devConfig.theme = theme;
+      if (customFields) devConfig.customFields = customFields;
+      if (roleProfiles) devConfig.roleProfiles = roleProfiles;
+      res.json({ message: "Config imported successfully", config: devConfig });
+    } catch (e) {
+      res.status(400).json({ message: "Invalid config format" });
+    }
+  });
+
+  // ─── GOD MODE: AUDIT LOG ───────────────────────────────────────────────────
+  const auditLog: any[] = [];
+  const addAudit = (action: string, entity: string, entityId: any, userId: string, before: any, after: any) => {
+    auditLog.unshift({ id: auditLog.length + 1, timestamp: new Date().toISOString(), action, entity, entityId, userId, before, after });
+    if (auditLog.length > 500) auditLog.pop();
+  };
+  (app as any)._addAudit = addAudit;
+
+  app.get('/api/admin/audit', isAuthenticated, async (req: any, res) => {
+    const { entity, action, limit = "100" } = req.query;
+    let logs = [...auditLog];
+    if (entity) logs = logs.filter(l => l.entity === entity);
+    if (action) logs = logs.filter(l => l.action === action);
+    res.json(logs.slice(0, Number(limit)));
+  });
+
+  // ─── GOD MODE: MACROS ──────────────────────────────────────────────────────
+  const macros: any[] = [];
+  let macroIdCounter = 1;
+
+  app.get('/api/admin/macros', isAuthenticated, async (_req, res) => res.json(macros));
+
+  app.post('/api/admin/macros', isAuthenticated, async (req: any, res) => {
+    const macro = { id: macroIdCounter++, ...req.body, createdAt: new Date().toISOString(), runCount: 0, lastRunAt: null };
+    macros.unshift(macro);
+    res.status(201).json(macro);
+  });
+
+  app.put('/api/admin/macros/:id', isAuthenticated, async (req: any, res) => {
+    const idx = macros.findIndex(m => m.id === Number(req.params.id));
+    if (idx === -1) return res.status(404).json({ message: "Macro not found" });
+    macros[idx] = { ...macros[idx], ...req.body, updatedAt: new Date().toISOString() };
+    res.json(macros[idx]);
+  });
+
+  app.delete('/api/admin/macros/:id', isAuthenticated, async (req, res) => {
+    const idx = macros.findIndex(m => m.id === Number(req.params.id));
+    if (idx === -1) return res.status(404).json({ message: "Macro not found" });
+    macros.splice(idx, 1);
+    res.json({ message: "Macro deleted" });
+  });
+
+  app.post('/api/admin/macros/:id/run', isAuthenticated, async (req: any, res) => {
+    const macro = macros.find(m => m.id === Number(req.params.id));
+    if (!macro) return res.status(404).json({ message: "Macro not found" });
+    const results: any[] = [];
+    for (const step of (macro.steps || [])) {
+      try {
+        if (step.type === "create_devotee" && step.data) {
+          const d = await storage.createDevotee(step.data);
+          addAudit("CREATE", "devotee", d.id, req.user?.claims?.sub || "macro", null, d);
+          results.push({ step: step.label, status: "ok", result: d });
+        } else if (step.type === "create_event" && step.data) {
+          const e = await storage.createEvent(step.data);
+          addAudit("CREATE", "event", e.id, req.user?.claims?.sub || "macro", null, e);
+          results.push({ step: step.label, status: "ok", result: e });
+        } else if (step.type === "create_attendance" && step.data) {
+          const a = await storage.createAttendance(step.data);
+          addAudit("CREATE", "attendance", a.id, req.user?.claims?.sub || "macro", null, a);
+          results.push({ step: step.label, status: "ok", result: a });
+        } else {
+          results.push({ step: step.label || "unknown", status: "skipped", note: "Step type not supported" });
+        }
+      } catch (err: any) {
+        results.push({ step: step.label || "unknown", status: "error", error: err.message });
+      }
+    }
+    macro.runCount = (macro.runCount || 0) + 1;
+    macro.lastRunAt = new Date().toISOString();
+    addAudit("RUN_MACRO", "macro", macro.id, req.user?.claims?.sub || "system", null, { name: macro.name, steps: macro.steps?.length });
+    res.json({ macro: macro.name, results, ranAt: macro.lastRunAt });
+  });
+
+  // ─── GOD MODE: BULK OPERATIONS ─────────────────────────────────────────────
+  app.post('/api/admin/bulk', isAuthenticated, async (req: any, res) => {
+    const { entity, operation, ids, data } = req.body;
+    const userId = req.user?.claims?.sub || "system";
+    const results: any[] = [];
+    try {
+      for (const id of (ids || [])) {
+        if (entity === "devotees") {
+          if (operation === "delete") {
+            const before = await storage.getDevotee(id);
+            await storage.deleteDevotee(id);
+            addAudit("DELETE", "devotee", id, userId, before, null);
+            results.push({ id, status: "deleted" });
+          } else if (operation === "update" && data) {
+            const before = await storage.getDevotee(id);
+            const after = await storage.updateDevotee(id, data);
+            addAudit("UPDATE", "devotee", id, userId, before, after);
+            results.push({ id, status: "updated" });
+          }
+        } else if (entity === "events") {
+          if (operation === "delete") {
+            const before = await storage.getEvent(id);
+            await storage.deleteEvent(id);
+            addAudit("DELETE", "event", id, userId, before, null);
+            results.push({ id, status: "deleted" });
+          }
+        } else if (entity === "attendance") {
+          if (operation === "delete") {
+            await storage.deleteAttendance(id);
+            addAudit("DELETE", "attendance", id, userId, null, null);
+            results.push({ id, status: "deleted" });
+          }
+        }
+      }
+      res.json({ operation, entity, count: results.length, results });
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  // ─── GOD MODE: FULL DATA EXPORT ────────────────────────────────────────────
+  app.get('/api/admin/export/data', isAuthenticated, async (req, res) => {
+    try {
+      const [devotees, families, events, attendance, donations, volunteering, mentors, groups, mandals, locations] = await Promise.all([
+        storage.getDevotees(),
+        storage.getFamilies(),
+        storage.getEvents(),
+        storage.getAttendance(),
+        storage.getDonations(),
+        storage.getVolunteering(),
+        storage.getMentors(),
+        storage.getGroups(),
+        storage.getMandals(),
+        storage.getSabhaLocations(),
+      ]);
+      const exportData = {
+        version: "2.0",
+        exportedAt: new Date().toISOString(),
+        appName: "Madhav Parivar",
+        counts: { devotees: devotees.length, families: families.length, events: events.length, attendance: attendance.length, donations: donations.length, volunteering: volunteering.length },
+        data: { devotees, families, events, attendance, donations, volunteering, mentors, groups, mandals, sabhaLocations: locations },
+      };
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="madhav-parivar-data-${new Date().toISOString().split('T')[0]}.json"`);
+      res.json(exportData);
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ─── GOD MODE: FULL DATA IMPORT ────────────────────────────────────────────
+  app.post('/api/admin/import/data', isAuthenticated, async (req: any, res) => {
+    try {
+      const { data } = req.body;
+      const userId = req.user?.claims?.sub || "system";
+      const results: Record<string, number> = {};
+      if (data?.devotees) {
+        for (const d of data.devotees) {
+          try { await storage.createDevotee(d); results.devotees = (results.devotees || 0) + 1; } catch {}
+        }
+      }
+      if (data?.families) {
+        for (const f of data.families) {
+          try { await storage.createFamily(f); results.families = (results.families || 0) + 1; } catch {}
+        }
+      }
+      if (data?.events) {
+        for (const e of data.events) {
+          try { await storage.createEvent(e); results.events = (results.events || 0) + 1; } catch {}
+        }
+      }
+      addAudit("IMPORT_DATA", "system", null, userId, null, results);
+      res.json({ message: "Data imported successfully", imported: results });
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  // ─── GOD MODE: RELATIONAL DATA ─────────────────────────────────────────────
+  app.get('/api/admin/relations/:entity/:id', isAuthenticated, async (req, res) => {
+    const { entity, id } = req.params;
+    const numId = Number(id);
+    try {
+      if (entity === "devotee") {
+        const devotee = await storage.getDevotee(numId);
+        if (!devotee) return res.status(404).json({ message: "Not found" });
+        const [family, mentor, attendance, donations, volunteering] = await Promise.all([
+          devotee.familyId ? storage.getFamily(devotee.familyId) : null,
+          devotee.mentorId ? storage.getMentor(devotee.mentorId) : null,
+          storage.getAttendance(numId),
+          storage.getDonations(numId),
+          storage.getVolunteering(numId),
+        ]);
+        res.json({ devotee, family, mentor, attendanceCount: attendance.length, donationsCount: donations.length, volunteeringCount: volunteering.length, attendanceRate: attendance.length ? Math.round((attendance.filter((a: any) => a.status === "present").length / attendance.length) * 100) : 0 });
+      } else if (entity === "family") {
+        const family = await storage.getFamily(numId);
+        if (!family) return res.status(404).json({ message: "Not found" });
+        const members = await storage.getDevoteesByFamily(numId);
+        res.json({ family, members, memberCount: members.length });
+      } else if (entity === "event") {
+        const event = await storage.getEvent(numId);
+        if (!event) return res.status(404).json({ message: "Not found" });
+        const attendance = (await storage.getAttendance(undefined, numId));
+        const presentCount = attendance.filter((a: any) => a.status === "present").length;
+        res.json({ event, attendanceCount: attendance.length, presentCount, attendanceRate: attendance.length ? Math.round((presentCount / attendance.length) * 100) : 0 });
+      } else {
+        res.status(400).json({ message: "Unknown entity type" });
+      }
+    } catch (err: any) {
+      res.status(500).json({ message: err.message });
+    }
+  });
+
+  // ─── GOD MODE: LINK DEVOTEE TO FAMILY/MENTOR ──────────────────────────────
+  app.patch('/api/admin/link', isAuthenticated, async (req: any, res) => {
+    const { devoteeId, familyId, mentorId } = req.body;
+    const userId = req.user?.claims?.sub || "system";
+    try {
+      const before = await storage.getDevotee(devoteeId);
+      const updates: any = {};
+      if (familyId !== undefined) updates.familyId = familyId;
+      if (mentorId !== undefined) updates.mentorId = mentorId;
+      const after = await storage.updateDevotee(devoteeId, updates);
+      addAudit("LINK", "devotee", devoteeId, userId, before, after);
+      res.json(after);
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
     }
   });
 
