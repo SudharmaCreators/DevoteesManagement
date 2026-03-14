@@ -734,24 +734,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Dev mode config (store/retrieve application config)
   const devConfig: Record<string, any> = {
-    appName: "Madhav Parivar",
-    appSubtitle: "Database System",
-    sidebarItems: [
-      { name: "Dashboard", href: "/", icon: "Home" },
-      { name: "Devotees", href: "/devotees", icon: "Users" },
-      { name: "Families", href: "/families", icon: "Building" },
-      { name: "Mentors", href: "/mentors", icon: "GraduationCap" },
-      { name: "Attendance", href: "/attendance", icon: "Calendar" },
-      { name: "Donations", href: "/donations", icon: "Heart" },
-      { name: "Events", href: "/events", icon: "CalendarDays" },
-      { name: "Volunteering", href: "/volunteering", icon: "HandHeart" },
-      { name: "Analytics", href: "/analytics", icon: "BarChart3" },
-      { name: "Dashboard Designer", href: "/dashboard-designer", icon: "PanelTop" },
-      { name: "ID Card Generator", href: "/id-cards", icon: "CreditCard" },
-      { name: "Settings", href: "/settings", icon: "Settings" },
+    appInfo: {
+      name: "Madhav Parivar",
+      subtitle: "Devotional Community Management",
+      logoSymbol: "॥",
+      logoGradientFrom: "primary",
+      logoGradientTo: "secondary",
+    },
+    navigation: {
+      items: [
+        { id: "dashboard", name: "Dashboard", href: "/", icon: "Home", visible: true, order: 0 },
+        { id: "devotees", name: "Devotees", href: "/devotees", icon: "Users", visible: true, order: 1 },
+        { id: "families", name: "Families", href: "/families", icon: "Building", visible: true, order: 2 },
+        { id: "mentors", name: "Mentors", href: "/mentors", icon: "GraduationCap", visible: true, order: 3 },
+        { id: "attendance", name: "Attendance", href: "/attendance", icon: "Calendar", visible: true, order: 4 },
+        { id: "donations", name: "Donations", href: "/donations", icon: "Heart", visible: true, order: 5 },
+        { id: "events", name: "Events", href: "/events", icon: "CalendarDays", visible: true, order: 6 },
+        { id: "volunteering", name: "Volunteering", href: "/volunteering", icon: "HandHeart", visible: true, order: 7 },
+        { id: "analytics", name: "Analytics", href: "/analytics", icon: "BarChart3", visible: true, order: 8 },
+        { id: "id-cards", name: "ID Card Generator", href: "/id-cards", icon: "CreditCard", visible: true, order: 9 },
+        { id: "settings", name: "Settings", href: "/settings", icon: "Settings", visible: true, order: 10 },
+      ],
+    },
+    theme: {
+      activePreset: "devotional",
+      customColors: {
+        primary: "24 100% 60%",
+        secondary: "343 100% 25%",
+        accent: "51 100% 50%",
+        background: "60 29% 94%",
+        foreground: "210 20% 18%",
+        card: "0 0% 100%",
+        border: "20 5.9% 90%",
+        muted: "54 23% 89%",
+      },
+      borderRadius: "0.5",
+      useCustom: false,
+    },
+    customFields: [
+      { id: "spiritual_name", label: "Spiritual Name", type: "text", entity: "devotee", required: false, placeholder: "Enter spiritual name" },
+      { id: "initiation_date", label: "Initiation Date", type: "date", entity: "devotee", required: false, placeholder: "" },
+      { id: "preferred_seva", label: "Preferred Seva", type: "dropdown", entity: "devotee", required: false, options: ["Puja", "Kitchen", "Outreach", "Education", "Music", "IT Support"], placeholder: "Select seva" },
     ],
-    theme: "default",
-    customCSS: "",
+    roleProfiles: {
+      admin: {
+        label: "Administrator",
+        visiblePages: ["dashboard","devotees","families","mentors","attendance","donations","events","volunteering","analytics","id-cards","settings","dev-studio"],
+        canEdit: true,
+        canDelete: true,
+      },
+      manager: {
+        label: "Manager",
+        visiblePages: ["dashboard","devotees","families","mentors","attendance","donations","events","volunteering","analytics","id-cards"],
+        canEdit: true,
+        canDelete: false,
+      },
+      volunteer: {
+        label: "Volunteer",
+        visiblePages: ["dashboard","devotees","attendance","events"],
+        canEdit: false,
+        canDelete: false,
+      },
+    },
+    snapshots: [] as Array<{ id: string; name: string; createdAt: string; config: any }>,
   };
 
   app.get('/api/dev-config', isAuthenticated, async (req, res) => {
@@ -761,6 +806,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/dev-config', isAuthenticated, async (req, res) => {
     Object.assign(devConfig, req.body);
     res.json(devConfig);
+  });
+
+  app.patch('/api/dev-config/app-info', isAuthenticated, async (req, res) => {
+    devConfig.appInfo = { ...devConfig.appInfo, ...req.body };
+    res.json(devConfig.appInfo);
+  });
+
+  app.patch('/api/dev-config/navigation', isAuthenticated, async (req, res) => {
+    devConfig.navigation = { ...devConfig.navigation, ...req.body };
+    res.json(devConfig.navigation);
+  });
+
+  app.patch('/api/dev-config/theme', isAuthenticated, async (req, res) => {
+    devConfig.theme = { ...devConfig.theme, ...req.body };
+    res.json(devConfig.theme);
+  });
+
+  app.patch('/api/dev-config/custom-fields', isAuthenticated, async (req, res) => {
+    devConfig.customFields = req.body.fields;
+    res.json(devConfig.customFields);
+  });
+
+  app.patch('/api/dev-config/role-profiles', isAuthenticated, async (req, res) => {
+    devConfig.roleProfiles = { ...devConfig.roleProfiles, ...req.body };
+    res.json(devConfig.roleProfiles);
+  });
+
+  app.post('/api/dev-config/snapshot', isAuthenticated, async (req, res) => {
+    const { name } = req.body;
+    const snapshot = {
+      id: `snap_${Date.now()}`,
+      name: name || `Snapshot ${new Date().toLocaleString()}`,
+      createdAt: new Date().toISOString(),
+      config: JSON.parse(JSON.stringify({ appInfo: devConfig.appInfo, navigation: devConfig.navigation, theme: devConfig.theme, customFields: devConfig.customFields, roleProfiles: devConfig.roleProfiles })),
+    };
+    devConfig.snapshots.unshift(snapshot);
+    if (devConfig.snapshots.length > 10) devConfig.snapshots.pop();
+    res.json(snapshot);
+  });
+
+  app.post('/api/dev-config/restore/:snapshotId', isAuthenticated, async (req, res) => {
+    const snap = devConfig.snapshots.find((s: any) => s.id === req.params.snapshotId);
+    if (!snap) return res.status(404).json({ message: "Snapshot not found" });
+    Object.assign(devConfig, snap.config);
+    res.json({ message: "Restored", config: snap.config });
+  });
+
+  app.get('/api/dev-config/export', isAuthenticated, async (req, res) => {
+    const exportData = {
+      version: "1.0",
+      exportedAt: new Date().toISOString(),
+      appInfo: devConfig.appInfo,
+      navigation: devConfig.navigation,
+      theme: devConfig.theme,
+      customFields: devConfig.customFields,
+      roleProfiles: devConfig.roleProfiles,
+    };
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', 'attachment; filename="madhav-parivar-config.json"');
+    res.json(exportData);
+  });
+
+  app.post('/api/dev-config/import', isAuthenticated, async (req, res) => {
+    try {
+      const { appInfo, navigation, theme, customFields, roleProfiles } = req.body;
+      if (appInfo) devConfig.appInfo = appInfo;
+      if (navigation) devConfig.navigation = navigation;
+      if (theme) devConfig.theme = theme;
+      if (customFields) devConfig.customFields = customFields;
+      if (roleProfiles) devConfig.roleProfiles = roleProfiles;
+      res.json({ message: "Config imported successfully", config: devConfig });
+    } catch (e) {
+      res.status(400).json({ message: "Invalid config format" });
+    }
   });
 
   const httpServer = createServer(app);
