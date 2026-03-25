@@ -126,7 +126,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       const devotee = await storage.getDevotee(id);
       if (!devotee || !devotee.familyId) return res.json([]);
-      const members = await (storage as any).getDevoteesByFamily(devotee.familyId);
+      const members = await storage.getDevoteesByFamily(devotee.familyId);
       res.json(members.filter((m: any) => m.id !== id));
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch family members" });
@@ -292,8 +292,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/events/:id/archive', isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const event = await (storage as any).archiveEvent(id);
-      if (!event) return res.status(404).json({ message: "Event not found" });
+      const event = await storage.archiveEvent(id);
       res.json(event);
     } catch (error) {
       res.status(500).json({ message: "Failed to archive event" });
@@ -303,7 +302,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/events/:id/unarchive', isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const event = await storage.updateEvent(id, { isArchived: false, archivedAt: null } as any);
+      const event = await storage.unarchiveEvent(id);
       res.json(event);
     } catch (error) {
       res.status(500).json({ message: "Failed to unarchive event" });
@@ -312,7 +311,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/events/auto-archive', isAuthenticated, async (req, res) => {
     try {
-      const count = await (storage as any).autoArchivePastEvents();
+      const count = await storage.autoArchivePastEvents();
       res.json({ archived: count });
     } catch (error) {
       res.status(500).json({ message: "Failed to auto-archive events" });
@@ -523,11 +522,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/analytics', isAuthenticated, async (req, res) => {
     try {
-      const stats = await storage.getStats();
-      const ms = (storage as any).memStore as MemoryStorage;
-      const donationTrends = ms.getDonationTrends ? ms.getDonationTrends() : [];
-      const attendanceTrends = ms.getAttendanceTrends ? ms.getAttendanceTrends() : [];
-      const volunteeringStats = ms.getVolunteeringStats ? ms.getVolunteeringStats() : [];
+      const [stats, donationTrends, attendanceTrends, volunteeringStats] = await Promise.all([
+        storage.getStats(),
+        storage.getDonationTrends(),
+        storage.getAttendanceTrends(),
+        storage.getVolunteeringStats(),
+      ]);
       res.json({ stats, donationTrends, attendanceTrends, volunteeringStats });
     } catch (error) {
       console.error("Error fetching analytics:", error);

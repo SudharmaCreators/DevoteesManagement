@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, varchar, decimal, jsonb, index } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, varchar, decimal, jsonb, index, unique } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -129,10 +129,10 @@ export const events = pgTable("events", {
 export const attendance = pgTable("attendance", {
   id: serial("id").primaryKey(),
   devoteeId: integer("devotee_id").notNull(),
-  eventId: integer("event_id").notNull(),
+  eventId: integer("event_id"),
   attendanceDate: timestamp("attendance_date").notNull(),
-  checkInTime: timestamp("check_in_time"),
-  checkOutTime: timestamp("check_out_time"),
+  checkInTime: varchar("check_in_time"),
+  checkOutTime: varchar("check_out_time"),
   status: varchar("status").notNull().default("present"),
   notes: text("notes"),
   recordedBy: varchar("recorded_by"),
@@ -200,7 +200,7 @@ export const groups = pgTable("groups", {
   meetingSchedule: varchar("meeting_schedule"),
   leaderId: integer("leader_id"),
   requirements: text("requirements"),
-  customFields: jsonb("custom_fields"), // Store dynamic field definitions
+  customFields: jsonb("custom_fields"),
   createdBy: varchar("created_by"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
@@ -211,7 +211,7 @@ export const groups = pgTable("groups", {
 export const groupEntries = pgTable("group_entries", {
   id: serial("id").primaryKey(),
   groupId: integer("group_id").notNull(),
-  entryData: jsonb("entry_data").notNull(), // Store all custom field values
+  entryData: jsonb("entry_data").notNull(),
   uniqueMemberId: varchar("unique_member_id").unique(),
   qrIdentifier: text("qr_identifier"),
   isActive: boolean("is_active").notNull().default(true),
@@ -267,7 +267,7 @@ export const dashboardLayouts = pgTable("dashboard_layouts", {
 // User Preferences storage table
 export const userPreferences = pgTable("user_preferences", {
   id: serial("id").primaryKey(),
-  userId: varchar("user_id").notNull(),
+  userId: varchar("user_id").notNull().unique(),
   theme: varchar("theme").default("devotional"),
   dashboardLayout: varchar("dashboard_layout"),
   notifications: text("notifications"),
@@ -367,11 +367,9 @@ export const groupEntriesRelations = relations(groupEntries, ({ one }) => ({
 }));
 
 export const mandalsRelations = relations(mandals, ({ many }) => ({
-  // Can be extended for relationships
 }));
 
 export const sabhaLocationsRelations = relations(sabhaLocations, ({ many }) => ({
-  // Can be extended for relationships
 }));
 
 export const groupMembershipsRelations = relations(groupMemberships, ({ one }) => ({

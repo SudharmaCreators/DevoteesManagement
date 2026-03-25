@@ -1,25 +1,17 @@
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-serverless';
-import ws from "ws";
+import { drizzle } from 'drizzle-orm/node-postgres';
+import pg from 'pg';
 import * as schema from "@shared/schema";
 
-neonConfig.webSocketConstructor = ws;
+const { Pool } = pg;
 
-let databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = process.env.DATABASE_URL;
 
 if (!databaseUrl) {
-  console.warn("DATABASE_URL not set, using mock database for development");
-  // Mock database URL for development when no real database is available
-  databaseUrl = "postgresql://mock:mock@localhost:5432/mock";
+  throw new Error("DATABASE_URL environment variable is required");
 }
 
-// Use pooled connection for better performance
-const pooledUrl = databaseUrl.includes('.neon.tech') 
-  ? databaseUrl.replace('.neon.tech', '-pooler.neon.tech')
-  : databaseUrl;
-
-export const pool = new Pool({ 
-  connectionString: pooledUrl,
+export const pool = new Pool({
+  connectionString: databaseUrl,
   max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,

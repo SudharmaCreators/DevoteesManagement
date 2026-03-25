@@ -258,7 +258,7 @@ export default function AttendancePage() {
                       </TableHeader>
                       <TableBody>
                         {filtered.map((record) => (
-                          <TableRow key={record.id} className="hover:bg-muted/30">
+                          <TableRow key={record.id} className="group hover:bg-muted/30">
                             <TableCell className="font-medium">{record.devoteeName}</TableCell>
                             <TableCell className="text-sm text-muted-foreground max-w-[180px] truncate">{record.eventTitle}</TableCell>
                             <TableCell className="text-sm">
@@ -266,7 +266,7 @@ export default function AttendancePage() {
                             </TableCell>
                             <TableCell>{getStatusBadge(record.status)}</TableCell>
                             <TableCell className="text-sm text-muted-foreground">{record.checkInTime || "—"}</TableCell>
-                            <TableCell className="text-sm text-muted-foreground capitalize">{record.markedBy || "System"}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground capitalize">{record.recordedBy || "System"}</TableCell>
                             <TableCell>
                               <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100"
                                 onClick={() => deleteMutation.mutate(record.id)}>
@@ -394,7 +394,7 @@ export default function AttendancePage() {
                 status: newRecord.status,
                 checkInTime: newRecord.checkInTime || null,
                 notes: newRecord.notes || null,
-                markedBy: "admin",
+                recordedBy: "admin",
               })}
             >
               {createMutation.isPending ? "Saving..." : "Mark Attendance"}

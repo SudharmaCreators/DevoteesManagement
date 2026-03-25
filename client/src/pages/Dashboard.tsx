@@ -54,28 +54,24 @@ export default function Dashboard() {
           <StatsCard
             title="Total Devotees"
             value={stats?.totalDevotees?.toLocaleString() || "0"}
-            change={{ value: "+12%", trend: "up" }}
             icon={Users}
             color="from-primary to-secondary"
           />
           <StatsCard
             title="Active Families"
             value={stats?.activeFamilies?.toLocaleString() || "0"}
-            change={{ value: "+8%", trend: "up" }}
             icon={Building}
             color="from-blue-500 to-blue-600"
           />
           <StatsCard
             title="Total Donations"
-            value={`₹${stats?.totalDonations?.toLocaleString() || "0"}`}
-            change={{ value: "+15%", trend: "up" }}
+            value={`₹${(stats?.totalDonations || 0).toLocaleString('en-IN')}`}
             icon={Heart}
             color="from-green-500 to-green-600"
           />
           <StatsCard
             title="Avg. Attendance"
             value={`${stats?.avgAttendance || 0}%`}
-            change={{ value: "+5%", trend: "up" }}
             icon={Calendar}
             color="from-yellow-500 to-yellow-600"
           />
