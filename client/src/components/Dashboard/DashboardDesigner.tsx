@@ -256,3 +256,5 @@ export function DashboardDesigner() {
     </div>
   );
 }
+
+export default DashboardDesigner;
