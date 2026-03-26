@@ -948,7 +948,7 @@ export class MemoryStorage implements IStorage {
 
   createNotification(data: Omit<Notification, 'id' | 'createdAt'>): Notification {
     const id = this.counters.notifications++;
-    const notification: Notification = { ...data, id, createdAt: new Date() };
+    const notification: Notification = { isPinned: false, ...data, id, createdAt: new Date() };
     this.notifications.set(id, notification);
     return notification;
   }

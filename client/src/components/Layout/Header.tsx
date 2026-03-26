@@ -205,61 +205,60 @@ export function Header({ title, subtitle, actions }: HeaderProps) {
                   </div>
                 </div>
 
-                {/* Scrollable list */}
-                <ScrollArea className="flex-1" style={{ maxHeight: "450px" }}>
-                  {notifications.length === 0 ? (
+                {/* Pinned section — fixed, not scrollable */}
+                {pinned.length > 0 && (
+                  <div className="flex-shrink-0 border-b border-amber-200 dark:border-amber-900">
+                    <div className="px-3 py-1.5 bg-amber-50 dark:bg-amber-950/30 flex items-center gap-1.5">
+                      <Pin className="w-3 h-3 text-amber-600" />
+                      <span className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Pinned</span>
+                    </div>
+                    <div className="divide-y divide-amber-100 dark:divide-amber-900/40">
+                      {pinned.map((n) => (
+                        <NotifItem
+                          key={n.id}
+                          n={n}
+                          formatTime={fmt}
+                          onMarkRead={() => markRead.mutate(n.id)}
+                          onDelete={() => del.mutate(n.id)}
+                          onTogglePin={() => togglePin.mutate({ id: n.id, isPinned: n.isPinned })}
+                          pinSection
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Recent section — scrollable */}
+                <ScrollArea className="flex-1" style={{ maxHeight: "380px" }}>
+                  {unpinned.length === 0 && pinned.length === 0 ? (
                     <div className="p-6 text-center text-muted-foreground text-sm">
                       <Bell className="w-8 h-8 mx-auto mb-2 opacity-30" />
                       No notifications
                     </div>
+                  ) : unpinned.length === 0 ? (
+                    <div className="p-4 text-center text-muted-foreground text-xs">
+                      No recent notifications
+                    </div>
                   ) : (
                     <>
-                      {/* Pinned section */}
                       {pinned.length > 0 && (
-                        <>
-                          <div className="px-3 py-1.5 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-900 flex items-center gap-1.5">
-                            <Pin className="w-3 h-3 text-amber-600" />
-                            <span className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Pinned</span>
-                          </div>
-                          <div className="divide-y divide-border">
-                            {pinned.map((n) => (
-                              <NotifItem
-                                key={n.id}
-                                n={n}
-                                formatTime={fmt}
-                                onMarkRead={() => markRead.mutate(n.id)}
-                                onDelete={() => del.mutate(n.id)}
-                                onTogglePin={() => togglePin.mutate({ id: n.id, isPinned: n.isPinned })}
-                                pinSection
-                              />
-                            ))}
-                          </div>
-                        </>
+                        <div className="px-3 py-1.5 bg-muted/40 border-b border-border flex-shrink-0">
+                          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Recent</span>
+                        </div>
                       )}
-
-                      {/* Recent section */}
-                      {unpinned.length > 0 && (
-                        <>
-                          {pinned.length > 0 && (
-                            <div className="px-3 py-1.5 bg-muted/40 border-b border-border">
-                              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Recent</span>
-                            </div>
-                          )}
-                          <div className="divide-y divide-border">
-                            {unpinned.map((n) => (
-                              <NotifItem
-                                key={n.id}
-                                n={n}
-                                formatTime={fmt}
-                                onMarkRead={() => markRead.mutate(n.id)}
-                                onDelete={() => del.mutate(n.id)}
-                                onTogglePin={() => togglePin.mutate({ id: n.id, isPinned: n.isPinned })}
-                                pinSection={false}
-                              />
-                            ))}
-                          </div>
-                        </>
-                      )}
+                      <div className="divide-y divide-border">
+                        {unpinned.map((n) => (
+                          <NotifItem
+                            key={n.id}
+                            n={n}
+                            formatTime={fmt}
+                            onMarkRead={() => markRead.mutate(n.id)}
+                            onDelete={() => del.mutate(n.id)}
+                            onTogglePin={() => togglePin.mutate({ id: n.id, isPinned: n.isPinned })}
+                            pinSection={false}
+                          />
+                        ))}
+                      </div>
                     </>
                   )}
                 </ScrollArea>
