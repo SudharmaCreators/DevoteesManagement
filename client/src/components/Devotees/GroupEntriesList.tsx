@@ -130,7 +130,7 @@ export function GroupEntriesList({ group, onClose }: GroupEntriesListProps) {
                         ) : field.type === 'date' && entryData[field.id] ? (
                           new Date(entryData[field.id]).toLocaleDateString()
                         ) : (
-                          <span className="truncate max-w-32 block">
+                          <span className="truncate max-w-32 block" title={entryData[field.id] || undefined}>
                             {entryData[field.id] || '-'}
                           </span>
                         )}

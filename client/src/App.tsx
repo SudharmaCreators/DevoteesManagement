@@ -51,7 +51,7 @@ function VisualEditModeOverlay() {
               </button>
             </div>
             {selectedElementId && (
-              <div className="text-xs text-blue-100 truncate">
+              <div className="text-xs text-blue-100 truncate" title={`Selected: ${selectedElementId}`}>
                 Selected: <code className="bg-white/20 px-1 rounded">{selectedElementId}</code>
               </div>
             )}
