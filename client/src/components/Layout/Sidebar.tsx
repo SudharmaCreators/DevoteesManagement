@@ -33,6 +33,17 @@ const DEFAULT_NAVIGATION = [
   { id: "settings", name: "Settings", href: "/settings", icon: "Settings", visible: true },
 ];
 
+const FLAG_TO_NAV_ID: Record<string, string> = {
+  donations: "donations",
+  analytics: "analytics",
+  volunteering: "volunteering",
+  idCards: "id-cards",
+  mentors: "mentors",
+  events: "events",
+  attendance: "attendance",
+  groups: "groups",
+};
+
 export function Sidebar() {
   const [location] = useLocation();
   const { user } = useAuth();
@@ -43,10 +54,24 @@ export function Sidebar() {
     enabled: true,
   });
 
+  const { data: featureFlags } = useQuery<any>({
+    queryKey: ["/api/admin/feature-flags"],
+    enabled: true,
+  });
+
   const appInfo = devConfig?.appInfo || { name: "Madhav Parivar", subtitle: "Database System", logoSymbol: "॥" };
-  const navItems: any[] = devConfig?.navigation?.items
+  const rawNavItems: any[] = devConfig?.navigation?.items
     ? [...devConfig.navigation.items].sort((a: any, b: any) => a.order - b.order).filter((n: any) => n.visible)
     : DEFAULT_NAVIGATION;
+
+  // Filter by feature flags (if flags are loaded; if flag is undefined, default to showing item)
+  const navItems = featureFlags
+    ? rawNavItems.filter(item => {
+        const flagKey = Object.entries(FLAG_TO_NAV_ID).find(([, navId]) => navId === item.id)?.[0];
+        if (!flagKey) return true; // no flag controlling this item → always show
+        return featureFlags[flagKey] !== false; // show unless flag is explicitly false
+      })
+    : rawNavItems;
 
   const getNavItemClass = (href: string) => {
     const isActive = location === href;
