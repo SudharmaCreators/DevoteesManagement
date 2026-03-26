@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { adminFetch } from "@/contexts/DevModeContext";
+import { useDevMode } from "@/contexts/DevModeContext";
 import { useToast } from "@/hooks/use-toast";
 import { 
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
@@ -52,6 +54,7 @@ export default function DevoteeProfilePage() {
   const id = params?.id ? parseInt(params.id) : null;
   const { toast } = useToast();
   const qc = useQueryClient();
+  const { isDevMode } = useDevMode();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [docType, setDocType] = useState("Aadhaar Card");
 
@@ -81,20 +84,21 @@ export default function DevoteeProfilePage() {
 
   const uploadDocMutation = useMutation({
     mutationFn: async ({ type, filename, base64 }: { type: string; filename: string; base64: string }) =>
-      apiRequest("POST", `/api/devotees/${id}/documents`, { type, filename, base64 }),
+      adminFetch(`/api/devotees/${id}/documents`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type, filename, base64 }) }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/devotees", id, "documents"] });
       toast({ title: "Document uploaded", description: "Document saved successfully." });
     },
-    onError: () => toast({ title: "Upload failed", variant: "destructive" }),
+    onError: () => toast({ title: "Upload failed. Developer mode required to upload documents.", variant: "destructive" }),
   });
 
   const deleteDocMutation = useMutation({
-    mutationFn: async (docId: string) => apiRequest("DELETE", `/api/devotees/${id}/documents/${docId}`),
+    mutationFn: async (docId: string) => adminFetch(`/api/devotees/${id}/documents/${docId}`, { method: "DELETE" }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/devotees", id, "documents"] });
       toast({ title: "Document deleted" });
     },
+    onError: () => toast({ title: "Delete failed. Developer mode required.", variant: "destructive" }),
   });
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -609,52 +613,59 @@ export default function DevoteeProfilePage() {
 
           {/* ── DOCUMENTS TAB ───────────────────────────────────────────── */}
           <TabsContent value="documents" className="mt-6 space-y-6">
-            {/* Upload panel */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Upload className="w-4 h-4" /> Upload Document
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-3 items-end">
-                  <div className="space-y-1.5">
-                    <p className="text-xs text-muted-foreground">Document Type</p>
-                    <Select value={docType} onValueChange={setDocType}>
-                      <SelectTrigger className="w-48">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Aadhaar Card">Aadhaar Card</SelectItem>
-                        <SelectItem value="PAN Card">PAN Card</SelectItem>
-                        <SelectItem value="Passport">Passport</SelectItem>
-                        <SelectItem value="Voter ID">Voter ID</SelectItem>
-                        <SelectItem value="Driving Licence">Driving Licence</SelectItem>
-                        <SelectItem value="Photo">Photo</SelectItem>
-                        <SelectItem value="Certificate">Certificate</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
+            {/* Upload panel — admin/dev mode only */}
+            {isDevMode ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Upload className="w-4 h-4" /> Upload Document
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-3 items-end">
+                    <div className="space-y-1.5">
+                      <p className="text-xs text-muted-foreground">Document Type</p>
+                      <Select value={docType} onValueChange={setDocType}>
+                        <SelectTrigger className="w-48">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Aadhaar Card">Aadhaar Card</SelectItem>
+                          <SelectItem value="PAN Card">PAN Card</SelectItem>
+                          <SelectItem value="Passport">Passport</SelectItem>
+                          <SelectItem value="Voter ID">Voter ID</SelectItem>
+                          <SelectItem value="Driving Licence">Driving Licence</SelectItem>
+                          <SelectItem value="Photo">Photo</SelectItem>
+                          <SelectItem value="Certificate">Certificate</SelectItem>
+                          <SelectItem value="Other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*,.pdf"
+                      className="hidden"
+                      onChange={handleFileUpload}
+                    />
+                    <Button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadDocMutation.isPending}
+                      className="bg-primary text-primary-foreground"
+                    >
+                      <Upload className="w-4 h-4 mr-2" />
+                      {uploadDocMutation.isPending ? "Uploading..." : "Choose File & Upload"}
+                    </Button>
+                    <p className="text-xs text-muted-foreground">Accepts: images, PDF (stored in-memory)</p>
                   </div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*,.pdf"
-                    className="hidden"
-                    onChange={handleFileUpload}
-                  />
-                  <Button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploadDocMutation.isPending}
-                    className="bg-primary text-primary-foreground"
-                  >
-                    <Upload className="w-4 h-4 mr-2" />
-                    {uploadDocMutation.isPending ? "Uploading..." : "Choose File & Upload"}
-                  </Button>
-                  <p className="text-xs text-muted-foreground">Accepts: images, PDF (stored in-memory)</p>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="flex items-center gap-2 p-3 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 text-sm">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                Document upload and management requires Developer (Admin) access. Contact your administrator.
+              </div>
+            )}
 
             {/* Document list */}
             <Card>
@@ -703,15 +714,17 @@ export default function DevoteeProfilePage() {
                           >
                             <Download className="w-4 h-4 text-blue-600" />
                           </Button>
-                          <Button
-                            variant="ghost" size="sm"
-                            onClick={() => deleteDocMutation.mutate(doc.id)}
-                            disabled={deleteDocMutation.isPending}
-                            className="text-destructive hover:text-destructive"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          {isDevMode && (
+                            <Button
+                              variant="ghost" size="sm"
+                              onClick={() => deleteDocMutation.mutate(doc.id)}
+                              disabled={deleteDocMutation.isPending}
+                              className="text-destructive hover:text-destructive"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     ))}

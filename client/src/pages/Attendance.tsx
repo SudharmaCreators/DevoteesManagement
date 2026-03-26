@@ -260,7 +260,7 @@ export default function AttendancePage() {
                         {filtered.map((record) => (
                           <TableRow key={record.id} className="group hover:bg-muted/30">
                             <TableCell className="font-medium">{record.devoteeName}</TableCell>
-                            <TableCell className="text-sm text-muted-foreground max-w-[180px] truncate">{record.eventTitle}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground max-w-[180px]" title={record.eventTitle}><span className="block truncate" title={record.eventTitle}>{record.eventTitle}</span></TableCell>
                             <TableCell className="text-sm">
                               {record.attendanceDate ? new Date(record.attendanceDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
                             </TableCell>
@@ -299,7 +299,7 @@ export default function AttendancePage() {
                         <span className={`text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center ${idx === 0 ? "bg-amber-100 text-amber-700" : idx === 1 ? "bg-gray-100 text-gray-600" : "bg-orange-50 text-orange-600"}`}>
                           {idx + 1}
                         </span>
-                        <span className="text-xs font-medium truncate max-w-[100px]">{att.name}</span>
+                        <span className="text-xs font-medium break-words max-w-[100px]" title={att.name}>{att.name}</span>
                       </div>
                       <span className="text-xs text-muted-foreground">{att.present} times</span>
                     </div>
@@ -320,7 +320,7 @@ export default function AttendancePage() {
                   const rate = evtRecords.length ? Math.round((presentCount / evtRecords.length) * 100) : 0;
                   return (
                     <div key={evt.id} className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground truncate max-w-[120px]">{evt.title}</span>
+                      <span className="text-muted-foreground break-words max-w-[120px]" title={evt.title}>{evt.title}</span>
                       <div className="flex items-center gap-1">
                         <span className="font-medium">{rate}%</span>
                         <span className="text-muted-foreground">({presentCount}/{evtRecords.length})</span>

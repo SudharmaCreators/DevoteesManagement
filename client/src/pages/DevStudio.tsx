@@ -1417,11 +1417,22 @@ function RollbackPanel() {
 }
 
 // ─── VISUAL OVERRIDES PANEL ───────────────────────────────────────────────────
+const CONTROL_TYPES = [
+  { value: "label", label: "Label", defaultWrap: "nowrap" as const },
+  { value: "text", label: "Text Block", defaultWrap: "normal" as const },
+  { value: "heading", label: "Heading", defaultWrap: "normal" as const },
+  { value: "badge", label: "Badge", defaultWrap: "nowrap" as const },
+  { value: "button", label: "Button", defaultWrap: "nowrap" as const },
+  { value: "custom", label: "Custom", defaultWrap: "normal" as const },
+];
+
 function VisualOverridesPanel() {
   const { overrides, setOverride, clearOverride, clearAllOverrides, isEditMode, toggleEditMode, saveToSlot, isSaving, unsavedChanges, selectedElementId } = useVisualEditor();
   const { toast } = useToast();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newElementId, setNewElementId] = useState("");
+  const [newControlType, setNewControlType] = useState<string>("label");
+  const [newWordWrap, setNewWordWrap] = useState<"normal" | "nowrap">("nowrap");
   const [color, setColor] = useState("#ffffff");
   const [textColor, setTextColor] = useState("#000000");
 
@@ -1465,16 +1476,47 @@ function VisualOverridesPanel() {
                 <div className="font-medium text-purple-700">Selected: <code className="bg-purple-100 px-1 rounded">{selectedElementId}</code></div>
               </div>
             )}
-            <div className="flex gap-2">
-              <Input
-                placeholder="Element ID (data-ve-id)"
-                value={newElementId}
-                onChange={e => setNewElementId(e.target.value)}
-                className="text-xs"
-              />
-              <Button size="sm" variant="outline" className="text-xs" onClick={() => {
-                if (newElementId) { setEditingId(newElementId); setNewElementId(""); }
-              }}>Edit</Button>
+            <div className="space-y-2 p-3 border rounded-lg bg-muted/20">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Create Label / Text Control</p>
+              <div className="flex gap-2">
+                <Select value={newControlType} onValueChange={v => {
+                  setNewControlType(v);
+                  const ct = CONTROL_TYPES.find(c => c.value === v);
+                  if (ct) setNewWordWrap(ct.defaultWrap);
+                }}>
+                  <SelectTrigger className="text-xs h-8 flex-1">
+                    <SelectValue placeholder="Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CONTROL_TYPES.map(ct => <SelectItem key={ct.value} value={ct.value}>{ct.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="text-xs text-muted-foreground">Word Wrap</label>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">{newWordWrap === "normal" ? "On" : "Off"}</span>
+                  <Switch
+                    checked={newWordWrap === "normal"}
+                    onCheckedChange={v => setNewWordWrap(v ? "normal" : "nowrap")}
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  placeholder={`Element ID (e.g. ${newControlType}-title)`}
+                  value={newElementId}
+                  onChange={e => setNewElementId(e.target.value)}
+                  className="text-xs"
+                />
+                <Button size="sm" variant="outline" className="text-xs whitespace-nowrap" onClick={() => {
+                  const id = newElementId || `${newControlType}-${Date.now()}`;
+                  setOverride(id, { wordWrap: newWordWrap });
+                  setEditingId(id);
+                  setNewElementId("");
+                  toast({ title: `${CONTROL_TYPES.find(c => c.value === newControlType)?.label} created`, description: `Override set for "${id}" with word-wrap: ${newWordWrap}` });
+                }}>Create</Button>
+              </div>
             </div>
             {clearAllOverrides && allIds.length > 0 && (
               <Button variant="outline" size="sm" className="w-full text-xs text-destructive border-destructive/30 gap-1"
