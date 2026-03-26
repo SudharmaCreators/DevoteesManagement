@@ -819,6 +819,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       events: true,
       attendance: true,
     } as Record<string, boolean>,
+    receiptTemplate: {
+      orgName: "Madhav Parivar",
+      orgSubtitle: "Devotional Community Management",
+      orgAddress: "Community Hall, Athwa, Surat, Gujarat - 395001",
+      orgPhone: "+91 98765 43210",
+      orgEmail: "info@madhavparivar.org",
+      orgWebsite: "www.madhavparivar.org",
+      orgRegNo: "Trust Reg. No. MP/2020/001",
+      section80G: "80G Certificate No. MP/80G/2020",
+      authorizedSignatory: "Community Administrator",
+      receiptFooter: "Jai Shri Krishna • This receipt is computer generated and is valid without signature.",
+      showLogo: true,
+      logoText: "॥ MP ॥",
+      primaryColor: "#b45309",
+      receiptTitle: "Donation Receipt",
+    },
+    analyticsDashboards: [] as Array<{ id: string; title: string; icon: string; panels: any[] }>,
+    cardThemes: [] as Array<{ id: string; name: string; colors: any; logo?: string; bgImage?: string }>,
     visualOverrides: {} as Record<string, any>,
     rollbackSlots: [] as Array<{ index: number; name: string; savedAt: string; overrides: Record<string, any> }>,
     rollbackNextIndex: 0,
@@ -1248,6 +1266,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
     res.json(devConfig.featureFlags);
+  });
+
+  // ─── ADMIN: RECEIPT TEMPLATE ────────────────────────────────────────────────
+  app.get('/api/admin/receipt-template', isAuthenticated, async (_req, res) => {
+    res.json(devConfig.receiptTemplate);
+  });
+  app.patch('/api/admin/receipt-template', isAuthenticated, requireGodMode, async (req, res) => {
+    devConfig.receiptTemplate = { ...devConfig.receiptTemplate, ...req.body };
+    res.json(devConfig.receiptTemplate);
+  });
+
+  // ─── ADMIN: ANALYTICS DASHBOARDS ────────────────────────────────────────────
+  app.get('/api/admin/analytics-dashboards', isAuthenticated, async (_req, res) => {
+    res.json(devConfig.analyticsDashboards);
+  });
+  app.post('/api/admin/analytics-dashboards', isAuthenticated, requireGodMode, async (req, res) => {
+    const dashboard = { ...req.body, id: `dash_${Date.now()}` };
+    devConfig.analyticsDashboards.push(dashboard);
+    res.json(dashboard);
+  });
+  app.put('/api/admin/analytics-dashboards/:id', isAuthenticated, requireGodMode, async (req, res) => {
+    const idx = devConfig.analyticsDashboards.findIndex((d: any) => d.id === req.params.id);
+    if (idx === -1) return res.status(404).json({ message: 'Dashboard not found' });
+    devConfig.analyticsDashboards[idx] = { ...devConfig.analyticsDashboards[idx], ...req.body };
+    res.json(devConfig.analyticsDashboards[idx]);
+  });
+  app.delete('/api/admin/analytics-dashboards/:id', isAuthenticated, requireGodMode, async (req, res) => {
+    devConfig.analyticsDashboards = devConfig.analyticsDashboards.filter((d: any) => d.id !== req.params.id);
+    res.json({ deleted: true });
+  });
+
+  // ─── ADMIN: CARD THEMES ──────────────────────────────────────────────────────
+  app.get('/api/admin/card-themes', isAuthenticated, async (_req, res) => {
+    res.json(devConfig.cardThemes);
+  });
+  app.post('/api/admin/card-themes', isAuthenticated, requireGodMode, async (req, res) => {
+    const theme = { ...req.body, id: `theme_${Date.now()}` };
+    devConfig.cardThemes.push(theme);
+    res.json(theme);
+  });
+  app.put('/api/admin/card-themes/:id', isAuthenticated, requireGodMode, async (req, res) => {
+    const idx = devConfig.cardThemes.findIndex((t: any) => t.id === req.params.id);
+    if (idx === -1) return res.status(404).json({ message: 'Theme not found' });
+    devConfig.cardThemes[idx] = { ...devConfig.cardThemes[idx], ...req.body };
+    res.json(devConfig.cardThemes[idx]);
+  });
+  app.delete('/api/admin/card-themes/:id', isAuthenticated, requireGodMode, async (req, res) => {
+    devConfig.cardThemes = devConfig.cardThemes.filter((t: any) => t.id !== req.params.id);
+    res.json({ deleted: true });
   });
 
   // ─── ADMIN: VISUAL OVERRIDES ────────────────────────────────────────────────
