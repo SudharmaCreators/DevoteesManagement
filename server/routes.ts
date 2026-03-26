@@ -797,6 +797,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       },
     },
     snapshots: [] as Array<{ id: string; name: string; createdAt: string; config: any }>,
+    featureFlags: {
+      donations: { enabled: true, label: "Donations Module" },
+      analytics: { enabled: true, label: "Analytics Dashboard" },
+      volunteering: { enabled: true, label: "Volunteering Module" },
+      idCards: { enabled: true, label: "ID Card Generator" },
+      groups: { enabled: true, label: "Groups & Messaging" },
+      mentors: { enabled: true, label: "Mentors System" },
+      events: { enabled: true, label: "Events & Calendar" },
+      attendance: { enabled: true, label: "Attendance Tracker" },
+    },
+    visualOverrides: {} as Record<string, any>,
+    rollbackSlots: [] as Array<{ index: number; name: string; savedAt: string; overrides: Record<string, any> }>,
+    rollbackNextIndex: 0,
   };
 
   app.get('/api/dev-config', isAuthenticated, async (req, res) => {
@@ -1103,6 +1116,239 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (err: any) {
       res.status(400).json({ message: err.message });
     }
+  });
+
+  // ─── PATCH ALIASES (for all entities — fixes DataBrowser PATCH calls) ──────
+  app.patch('/api/devotees/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validatedData = insertDevoteeSchema.partial().parse(req.body);
+      const devotee = await storage.updateDevotee(id, validatedData);
+      res.json(devotee);
+    } catch (error) { res.status(400).json({ message: "Invalid devotee data" }); }
+  });
+  app.patch('/api/families/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validatedData = insertFamilySchema.partial().parse(req.body);
+      const family = await storage.updateFamily(id, validatedData);
+      res.json(family);
+    } catch (error) { res.status(400).json({ message: "Invalid family data" }); }
+  });
+  app.patch('/api/mentors/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const mentor = await storage.updateMentor(id, req.body);
+      res.json(mentor);
+    } catch (error) { res.status(400).json({ message: "Invalid mentor data" }); }
+  });
+  app.patch('/api/donations/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const donation = await storage.updateDonation(id, req.body);
+      res.json(donation);
+    } catch (error) { res.status(400).json({ message: "Invalid donation data" }); }
+  });
+  app.patch('/api/volunteering/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const vol = await storage.updateVolunteering(id, req.body);
+      res.json(vol);
+    } catch (error) { res.status(400).json({ message: "Invalid volunteering data" }); }
+  });
+  app.patch('/api/attendance/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const att = await storage.updateAttendance(id, req.body);
+      res.json(att);
+    } catch (error) { res.status(400).json({ message: "Invalid attendance data" }); }
+  });
+  app.patch('/api/events/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validatedData = insertEventSchema.partial().parse(req.body);
+      const event = await storage.updateEvent(id, validatedData);
+      res.json(event);
+    } catch (error) { res.status(400).json({ message: "Invalid event data" }); }
+  });
+
+  // ─── FAMILY MEMBERS ─────────────────────────────────────────────────────────
+  app.get('/api/families/:id/members', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const members = await storage.getDevoteesByFamily(id);
+      res.json(members);
+    } catch (error) { res.status(500).json({ message: "Failed to fetch family members" }); }
+  });
+
+  // ─── ADMIN: QUERY CONSOLE ───────────────────────────────────────────────────
+  app.get('/api/admin/query', isAuthenticated, async (req, res) => {
+    try {
+      const { entity = "devotees", search = "", limit = "100" } = req.query as any;
+      let data: any[] = [];
+      switch (entity) {
+        case "devotees": data = await storage.getDevotees(); break;
+        case "families": data = await storage.getFamilies(); break;
+        case "events": data = await storage.getEvents(); break;
+        case "attendance": data = await storage.getAttendance(); break;
+        case "donations": data = await storage.getDonations(); break;
+        case "volunteering": data = await storage.getVolunteering(); break;
+        case "mentors": data = await storage.getMentors(); break;
+        case "groups": data = await storage.getGroups(); break;
+        default: data = [];
+      }
+      if (search) {
+        const q = search.toLowerCase();
+        data = data.filter((row: any) =>
+          Object.values(row).some(v => v && String(v).toLowerCase().includes(q))
+        );
+      }
+      res.json({ entity, count: data.length, results: data.slice(0, Number(limit)) });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+
+  // ─── ADMIN: FEATURE FLAGS ───────────────────────────────────────────────────
+  app.get('/api/admin/feature-flags', isAuthenticated, async (_req, res) => {
+    res.json(devConfig.featureFlags);
+  });
+  app.patch('/api/admin/feature-flags', isAuthenticated, async (req, res) => {
+    Object.assign(devConfig.featureFlags, req.body);
+    res.json(devConfig.featureFlags);
+  });
+
+  // ─── ADMIN: VISUAL OVERRIDES ────────────────────────────────────────────────
+  app.get('/api/admin/visual-overrides', isAuthenticated, async (_req, res) => {
+    res.json(devConfig.visualOverrides);
+  });
+  app.patch('/api/admin/visual-overrides', isAuthenticated, async (req, res) => {
+    Object.assign(devConfig.visualOverrides, req.body);
+    res.json(devConfig.visualOverrides);
+  });
+  app.delete('/api/admin/visual-overrides', isAuthenticated, async (_req, res) => {
+    devConfig.visualOverrides = {};
+    res.json({ cleared: true });
+  });
+
+  // ─── ADMIN: ROLLBACK SLOTS (5-slot circular buffer) ──────────────────────
+  app.get('/api/admin/rollback-slots', isAuthenticated, async (_req, res) => {
+    res.json({
+      slots: devConfig.rollbackSlots,
+      nextIndex: devConfig.rollbackNextIndex,
+      currentOverrides: devConfig.visualOverrides,
+    });
+  });
+  app.post('/api/admin/rollback-slots', isAuthenticated, async (req, res) => {
+    const { name } = req.body;
+    const slotIndex = devConfig.rollbackNextIndex % 5;
+    const slot = {
+      index: slotIndex,
+      name: name || `Save ${new Date().toLocaleString()}`,
+      savedAt: new Date().toISOString(),
+      overrides: JSON.parse(JSON.stringify(devConfig.visualOverrides)),
+    };
+    if (devConfig.rollbackSlots.length > slotIndex) {
+      devConfig.rollbackSlots[slotIndex] = slot;
+    } else {
+      devConfig.rollbackSlots.push(slot);
+    }
+    devConfig.rollbackNextIndex = (devConfig.rollbackNextIndex + 1);
+    res.json(slot);
+  });
+  app.post('/api/admin/rollback-slots/:index/restore', isAuthenticated, async (req, res) => {
+    const idx = parseInt(req.params.index);
+    const slot = devConfig.rollbackSlots.find((s: any) => s.index === idx);
+    if (!slot) return res.status(404).json({ message: "Slot not found" });
+    devConfig.visualOverrides = JSON.parse(JSON.stringify(slot.overrides));
+    res.json({ restored: true, slot, overrides: devConfig.visualOverrides });
+  });
+
+  // ─── ADMIN: SEED MANAGER ────────────────────────────────────────────────────
+  app.get('/api/admin/seed/counts', isAuthenticated, async (_req, res) => {
+    try {
+      const [devotees, families, events, attendance, donations, volunteering, mentors, groups] = await Promise.all([
+        storage.getDevotees(), storage.getFamilies(), storage.getEvents(),
+        storage.getAttendance(), storage.getDonations(), storage.getVolunteering(),
+        storage.getMentors(), storage.getGroups(),
+      ]);
+      res.json({
+        devotees: devotees.length, families: families.length, events: events.length,
+        attendance: attendance.length, donations: donations.length, volunteering: volunteering.length,
+        mentors: mentors.length, groups: groups.length,
+      });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+  app.post('/api/admin/seed/reset', isAuthenticated, async (req: any, res) => {
+    try {
+      const ms = (storage as any).memStore;
+      if (ms && ms.resetAndReseed) {
+        ms.resetAndReseed();
+        addAudit("SEED_RESET", "system", null, req.user?.claims?.sub || "god-mode", null, { action: "Full reset and reseed" });
+        res.json({ message: "Data reset and reseeded successfully" });
+      } else {
+        res.status(400).json({ message: "Reset not available (non-memory storage)" });
+      }
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
+  });
+  app.post('/api/admin/seed/add', isAuthenticated, async (req: any, res) => {
+    try {
+      const { count = 5, entity = "devotees" } = req.body;
+      const userId = req.user?.claims?.sub || "god-mode";
+      const created: any[] = [];
+      for (let i = 0; i < Math.min(count, 50); i++) {
+        const num = Math.floor(Math.random() * 9000) + 1000;
+        if (entity === "devotees") {
+          const names = ["Arjun", "Priya", "Ram", "Sita", "Krishna", "Radha", "Vishnu", "Lakshmi", "Shiva", "Parvati"];
+          const lastNames = ["Sharma", "Patel", "Verma", "Gupta", "Singh", "Kumar", "Das", "Rao"];
+          const first = names[Math.floor(Math.random() * names.length)];
+          const last = lastNames[Math.floor(Math.random() * lastNames.length)];
+          const d = await storage.createDevotee({
+            devoteeId: `MP-T${num}`,
+            firstName: first,
+            lastName: last,
+            email: `test.${num}@parivar.org`,
+            isActive: true,
+            spiritualLevel: ["Novice", "Practitioner", "Advanced"][Math.floor(Math.random() * 3)],
+          } as any);
+          addAudit("CREATE", "devotee", d.id, userId, null, d);
+          created.push(d);
+        } else if (entity === "events") {
+          const titles = ["Satsang", "Puja", "Bhajan Night", "Seva Day", "Retreat"];
+          const e = await storage.createEvent({
+            title: `${titles[Math.floor(Math.random() * titles.length)]} ${num}`,
+            eventType: "spiritual",
+            startDate: new Date(Date.now() + Math.random() * 30 * 86400000),
+            status: "planned",
+            isActive: true,
+          } as any);
+          created.push(e);
+        } else if (entity === "donations") {
+          const methods = ["Cash", "Online", "Cheque"];
+          const amounts = [101, 251, 501, 1001, 2001, 5001];
+          const purposes = ["Temple Maintenance", "Festival Fund", "Education", "Medical Aid", "General Donation"];
+          const d = await storage.createDonation({
+            devoteeId: Math.ceil(Math.random() * 20),
+            amount: amounts[Math.floor(Math.random() * amounts.length)].toString(),
+            donationDate: new Date(Date.now() - Math.random() * 90 * 86400000),
+            paymentMethod: methods[Math.floor(Math.random() * methods.length)],
+            purpose: purposes[Math.floor(Math.random() * purposes.length)],
+            isActive: true,
+          } as any);
+          created.push(d);
+        } else if (entity === "volunteering") {
+          const activities = ["Event Setup", "Prasad Preparation", "Decoration", "Registration", "Cleaning", "Sound System"];
+          const v = await storage.createVolunteering({
+            devoteeId: Math.ceil(Math.random() * 20),
+            activityType: activities[Math.floor(Math.random() * activities.length)],
+            hoursCompleted: Math.floor(Math.random() * 8) + 1,
+            date: new Date(Date.now() - Math.random() * 60 * 86400000),
+            status: "completed",
+            isActive: true,
+          } as any);
+          created.push(v);
+        }
+      }
+      res.json({ created: created.length, entity, message: `Added ${created.length} ${entity} records`, records: created });
+    } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
 
   const httpServer = createServer(app);

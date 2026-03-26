@@ -44,19 +44,19 @@ This is a comprehensive devotional management system built for managing spiritua
 ### Advanced Features
 1. **Dashboard Designer**: Customizable dashboard with draggable widgets
 2. **ID Card Generator**: Professional ID card creation with multiple templates
-3. **Theme System**: Multiple theme options including devotional, matrix, and modern styles
+3. **Theme System**: 8 complete themes (Devotional Classic, Matrix Digital, Iron Man Tech, Ocean Blue, Forest Green, Royal Purple, Sunset Orange, Midnight Dark) with full CSS variable coverage for dark/light modes
 4. **Analytics**: Comprehensive reporting and analytics dashboard
 5. **Bulk Operations**: Mass operations for devotee management
 6. **Export/Import**: Data export and import capabilities
-7. **Developer Studio** (`/dev-studio`): Full app designer with 6 tabs:
-   - **App Info**: Change app name, subtitle, logo symbol with live preview
-   - **Theme Editor**: 8 preset themes + custom HSL color sliders + border radius control
-   - **Navigation Editor**: Reorder/rename/show-hide/add sidebar items with live preview
-   - **Custom Fields**: Define extra fields (text/number/date/dropdown/boolean) for entities
-   - **Role Profiles**: Configure page access and edit/delete permissions per role
-   - **Config**: Export/Import JSON config, snapshot history with restore
-8. **Notifications**: Live notification system with bell icon, mark read/delete
-9. **Dev Mode**: Code `DevelopZ`, yellow banner with quick Dev Studio link
+7. **GOD Mode Developer Studio**: 15-tab studio with 3 rows:
+   - CONFIGURATION: App Info, Theme Studio, Navigation, Schema, Access Control
+   - GOD MODE TOOLS: Data Browser, Relational Map, Macro Studio, Audit Trail, Dev Ops
+   - GOD MODE POWER: API Console, Feature Flags, Seed Manager, Rollback, Visual Overrides
+8. **Visual Editor**: In-place visual editing with 5-slot circular rollback buffer
+9. **Feature Flags**: 8 module flags wired to sidebar navigation (donations, analytics, volunteering, idCards, mentors, events, attendance, groups)
+10. **Seed Manager**: Reset to demo data or add test records for any entity
+11. **Notifications**: Live notification system with bell icon, mark read/delete
+12. **Dev Mode**: Code `DevelopZ`, yellow banner with quick Dev Studio link, VisualEditor floating button
 
 ## Data Flow
 
@@ -170,6 +170,14 @@ Changelog:
 - March 13, 2026. Major feature additions: Developer Mode, Devotee Full Profile Page with analytics charts,
   Upcoming Events on Dashboard, Events image upload and archiving, Fixed Select.Item empty value bugs,
   Updated to in-memory storage with rich seed data
+- March 26, 2026. GOD Mode expansion:
+  - 5 new GOD MODE POWER tabs in Dev Studio (API Console, Feature Flags, Seed Manager, Rollback, Visual Overrides)
+  - VisualEditorContext with 5-slot circular rollback buffer for in-place visual editing
+  - Feature Flags now wired to sidebar nav (8 flags control module visibility live)
+  - ThemeContext updated with full CSS variable coverage for all 8 themes (card, muted, border for dark themes)
+  - DevMode banner overlap fixed (pt-7 applied to main content wrapper when banner active)
+  - Seed Manager: resetAndReseed() + donations/volunteering support in seed/add endpoint
+  - Visual Editor floating button in bottom-right corner (dev mode only)
 ```
 
 ## User Preferences
