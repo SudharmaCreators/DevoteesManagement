@@ -522,3 +522,22 @@ export type DashboardLayout = typeof dashboardLayouts.$inferSelect;
 
 export type InsertUserPreferences = z.infer<typeof insertUserPreferencesSchema>;
 export type UserPreferences = typeof userPreferences.$inferSelect;
+
+// ─── Notification (in-memory only, not persisted in DB) ──────────────────────
+export const notificationSchema = z.object({
+  id: z.number(),
+  userId: z.string(),
+  title: z.string(),
+  message: z.string(),
+  type: z.enum(["info", "success", "warning", "error"]),
+  isRead: z.boolean(),
+  isPinned: z.boolean(),
+  relatedEntity: z.string().optional(),
+  relatedId: z.number().optional(),
+  createdAt: z.date(),
+});
+
+export const insertNotificationSchema = notificationSchema.omit({ id: true, createdAt: true });
+
+export type Notification = z.infer<typeof notificationSchema>;
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;

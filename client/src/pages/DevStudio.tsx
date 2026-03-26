@@ -1525,6 +1525,13 @@ function VisualOverridesPanel() {
                 );
               })}
               <div className="flex items-center justify-between">
+                <label className="text-xs text-muted-foreground">Word Wrap</label>
+                <Switch
+                  checked={overrides[editingId || selectedElementId!]?.wordWrap === "normal"}
+                  onCheckedChange={v => setOverride(editingId || selectedElementId!, { wordWrap: v ? "normal" : "nowrap" })}
+                />
+              </div>
+              <div className="flex items-center justify-between">
                 <label className="text-xs text-muted-foreground">Hide Element</label>
                 <Switch
                   checked={!!overrides[editingId || selectedElementId!]?.hidden}
