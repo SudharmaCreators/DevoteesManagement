@@ -88,8 +88,8 @@ export function Sidebar() {
             <span className="text-primary-foreground text-lg font-bold">{appInfo.logoSymbol || "॥"}</span>
           </div>
           <div className="min-w-0">
-            <h1 className="text-base font-bold text-foreground truncate">{appInfo.name}</h1>
-            <p className="text-xs text-muted-foreground truncate">{appInfo.subtitle}</p>
+            <h1 className="text-base font-bold text-foreground break-words leading-tight">{appInfo.name}</h1>
+            <p className="text-xs text-muted-foreground break-words leading-tight mt-0.5">{appInfo.subtitle}</p>
           </div>
         </div>
       </div>
@@ -107,7 +107,7 @@ export function Sidebar() {
             <Link key={item.id || item.href} href={item.href}>
               <div className={getNavItemClass(item.href)} data-testid={`nav-link-${item.id || item.href.replace(/\//g, "")}`}>
                 <Icon className="w-5 h-5 flex-shrink-0" />
-                <span className="truncate">{item.name}</span>
+                <span className="break-words min-w-0">{item.name}</span>
               </div>
             </Link>
           );
@@ -122,7 +122,7 @@ export function Sidebar() {
             <Link href="/dev-studio">
               <div className={getNavItemClass("/dev-studio")} data-testid="nav-link-dev-studio">
                 <Code2 className="w-5 h-5 flex-shrink-0 text-yellow-500" />
-                <span className="truncate text-yellow-600 dark:text-yellow-400 font-medium">Dev Studio</span>
+                <span className="break-words min-w-0 text-yellow-600 dark:text-yellow-400 font-medium">Dev Studio</span>
               </div>
             </Link>
           </>
@@ -166,7 +166,7 @@ export function Sidebar() {
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">
+            <p className="text-sm font-medium text-foreground break-words leading-tight">
               {user?.firstName} {user?.lastName}
             </p>
             <Badge variant="secondary" className="text-xs mt-0.5">{user?.role}</Badge>

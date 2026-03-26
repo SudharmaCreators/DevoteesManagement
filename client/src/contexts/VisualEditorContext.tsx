@@ -14,6 +14,7 @@ export interface VisualOverride {
   borderRadius?: string;
   padding?: string;
   hidden?: boolean;
+  wordWrap?: "normal" | "nowrap";
   customCss?: string;
 }
 
@@ -188,6 +189,7 @@ function VisualEditorStyles({ overrides }: { overrides: Record<string, VisualOve
       if (o.opacity) parts.push(`opacity: ${o.opacity} !important;`);
       if (o.borderRadius) parts.push(`border-radius: ${o.borderRadius} !important;`);
       if (o.padding) parts.push(`padding: ${o.padding} !important;`);
+      if (o.wordWrap) parts.push(`white-space: ${o.wordWrap === "normal" ? "normal" : "nowrap"} !important; word-break: ${o.wordWrap === "normal" ? "break-word" : "normal"} !important;`);
       if (o.customCss) parts.push(o.customCss);
       return parts.length ? `[data-ve-id="${id}"] { ${parts.join(' ')} }` : '';
     })
