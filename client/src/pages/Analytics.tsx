@@ -14,22 +14,58 @@ import { Badge } from "@/components/ui/badge";
 
 const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#8dd1e1', '#a4de6c', '#d0ed57'];
 
+// ─── Local types for analytics data (server-provided shape) ───────────────────
+interface AnalyticsData {
+  stats?: { totalDevotees: number; activeFamilies: number; totalDonations: number; avgAttendance: number };
+  donationTrends?: Array<{ month: string; amount: number }>;
+  attendanceTrends?: Array<{ month: string; present: number; absent: number }>;
+  volunteeringStats?: Array<{ activity: string; hours: number }>;
+}
+
+interface DevoteeSummary {
+  id: number;
+  dateOfBirth?: string;
+  gender?: string;
+  spiritualLevel?: string;
+  city?: string;
+  joinDate?: string;
+}
+
+interface EventSummary {
+  id: number;
+  title: string;
+  eventType?: string;
+  eventDate?: string;
+  startDate?: string;
+}
+
+interface DonationSummary {
+  id: number;
+  amount: string;
+  purpose?: string;
+  paymentMethod?: string;
+  donationType?: string;
+  donationDate: string;
+  status?: string;
+}
+
 export default function Analytics() {
   const [, navigate] = useLocation();
-  const { data: analytics, isLoading } = useQuery({ queryKey: ["/api/analytics"] });
-  const { data: devotees = [] } = useQuery({ queryKey: ["/api/devotees"] });
-  const { data: events = [] } = useQuery({ queryKey: ["/api/events"] });
-  const { data: donations = [] } = useQuery({ queryKey: ["/api/donations"] });
-  const { data: families = [] } = useQuery({ queryKey: ["/api/families"] });
+  const { data: analyticsRaw, isLoading } = useQuery<AnalyticsData>({ queryKey: ["/api/analytics"] });
+  const { data: devotees = [] } = useQuery<DevoteeSummary[]>({ queryKey: ["/api/devotees"] });
+  const { data: events = [] } = useQuery<EventSummary[]>({ queryKey: ["/api/events"] });
+  const { data: donations = [] } = useQuery<DonationSummary[]>({ queryKey: ["/api/donations"] });
+  const { data: families = [] } = useQuery<unknown[]>({ queryKey: ["/api/families"] });
 
-  const stats = (analytics as any)?.stats;
-  const donationTrends: Array<{month: string; amount: number}> = (analytics as any)?.donationTrends || [];
-  const attendanceTrends: Array<{month: string; present: number; absent: number}> = (analytics as any)?.attendanceTrends || [];
-  const volunteeringStats: Array<{activity: string; hours: number}> = (analytics as any)?.volunteeringStats || [];
+  const analytics = analyticsRaw as AnalyticsData | undefined;
+  const stats = analytics?.stats;
+  const donationTrends: Array<{ month: string; amount: number }> = analytics?.donationTrends || [];
+  const attendanceTrends: Array<{ month: string; present: number; absent: number }> = analytics?.attendanceTrends || [];
+  const volunteeringStats: Array<{ activity: string; hours: number }> = analytics?.volunteeringStats || [];
 
   // Event type pie
   const eventTypeCounts: Record<string, number> = {};
-  (events as any[]).forEach((e: any) => {
+  events.forEach((e) => {
     const type = e.eventType || "Other";
     eventTypeCounts[type] = (eventTypeCounts[type] || 0) + 1;
   });
@@ -37,7 +73,7 @@ export default function Analytics() {
 
   // Age group from devotees
   const ageBuckets: Record<string, number> = { '18-25': 0, '26-35': 0, '36-45': 0, '46-55': 0, '56+': 0 };
-  (devotees as any[]).forEach((d: any) => {
+  devotees.forEach((d) => {
     if (d.dateOfBirth) {
       const age = Math.floor((Date.now() - new Date(d.dateOfBirth).getTime()) / (365.25 * 24 * 3600 * 1000));
       if (age <= 25) ageBuckets['18-25']++;
@@ -51,7 +87,7 @@ export default function Analytics() {
 
   // Gender distribution
   const genderCounts: Record<string, number> = {};
-  (devotees as any[]).forEach((d: any) => {
+  devotees.forEach((d) => {
     const g = d.gender || "Unknown";
     genderCounts[g] = (genderCounts[g] || 0) + 1;
   });
@@ -59,7 +95,7 @@ export default function Analytics() {
 
   // Spiritual level distribution
   const spiritCounts: Record<string, number> = {};
-  (devotees as any[]).forEach((d: any) => {
+  devotees.forEach((d) => {
     const l = d.spiritualLevel || "Nutan";
     spiritCounts[l] = (spiritCounts[l] || 0) + 1;
   });
@@ -67,17 +103,17 @@ export default function Analytics() {
 
   // City distribution
   const cityCounts: Record<string, number> = {};
-  (devotees as any[]).forEach((d: any) => {
+  devotees.forEach((d) => {
     if (d.city) cityCounts[d.city] = (cityCounts[d.city] || 0) + 1;
   });
   const cityData = Object.entries(cityCounts)
-    .sort(([,a],[,b]) => b - a)
+    .sort(([, a], [, b]) => b - a)
     .slice(0, 8)
     .map(([city, count]) => ({ city, count }));
 
   // Donation by purpose
   const purposeCounts: Record<string, number> = {};
-  (donations as any[]).forEach((d: any) => {
+  donations.forEach((d) => {
     const p = d.purpose || "General";
     purposeCounts[p] = (purposeCounts[p] || 0) + parseFloat(d.amount || "0");
   });
@@ -85,7 +121,7 @@ export default function Analytics() {
 
   // Donation by payment method
   const payMethodCounts: Record<string, number> = {};
-  (donations as any[]).forEach((d: any) => {
+  donations.forEach((d) => {
     const m = d.paymentMethod || d.donationType || "Other";
     payMethodCounts[m] = (payMethodCounts[m] || 0) + 1;
   });
@@ -93,7 +129,7 @@ export default function Analytics() {
 
   // Monthly donations
   const monthlyDonations: Record<string, number> = {};
-  (donations as any[]).forEach((d: any) => {
+  donations.forEach((d) => {
     const key = new Date(d.donationDate).toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
     monthlyDonations[key] = (monthlyDonations[key] || 0) + parseFloat(d.amount || "0");
   });
@@ -101,7 +137,7 @@ export default function Analytics() {
 
   // Join date trend (devotees per month)
   const joinTrend: Record<string, number> = {};
-  (devotees as any[]).forEach((d: any) => {
+  devotees.forEach((d) => {
     if (d.joinDate) {
       const key = new Date(d.joinDate).toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
       joinTrend[key] = (joinTrend[key] || 0) + 1;
@@ -117,7 +153,7 @@ export default function Analytics() {
     );
   }
 
-  const totalDonationSum = (donations as any[]).reduce((s: number, d: any) => s + parseFloat(d.amount || "0"), 0);
+  const totalDonationSum = donations.reduce((s, d) => s + parseFloat(d.amount || "0"), 0);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
