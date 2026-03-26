@@ -4,14 +4,26 @@ import { storage } from "./storage";
 import { MemoryStorage } from "./memoryStorage";
 // import { setupAuth, isAuthenticated } from "./replitAuth";
 
+import { randomBytes } from "crypto";
+
 // Mock authentication for development
 const isAuthenticated = (req: any, res: any, next: any) => {
-  // Mock user data for development
-  req.user = {
-    claims: {
-      sub: 'dev-user-1'
-    }
-  };
+  req.user = { claims: { sub: 'dev-user-1' } };
+  next();
+};
+
+// GOD Mode session management — server-side authorization for privileged admin endpoints
+const godModeTokens = new Set<string>();
+const GOD_MODE_PASSWORD = "DevelopZ";
+
+const requireGodMode = (req: any, res: any, next: any) => {
+  const token = req.headers['x-god-mode-token'] as string | undefined;
+  if (!token || !godModeTokens.has(token)) {
+    return res.status(403).json({
+      message: "GOD Mode access required. Activate Developer Mode to access this endpoint.",
+      code: "GOD_MODE_REQUIRED"
+    });
+  }
   next();
 };
 import {
@@ -798,19 +810,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
     snapshots: [] as Array<{ id: string; name: string; createdAt: string; config: any }>,
     featureFlags: {
-      donations: { enabled: true, label: "Donations Module" },
-      analytics: { enabled: true, label: "Analytics Dashboard" },
-      volunteering: { enabled: true, label: "Volunteering Module" },
-      idCards: { enabled: true, label: "ID Card Generator" },
-      groups: { enabled: true, label: "Groups & Messaging" },
-      mentors: { enabled: true, label: "Mentors System" },
-      events: { enabled: true, label: "Events & Calendar" },
-      attendance: { enabled: true, label: "Attendance Tracker" },
-    },
+      donations: true,
+      analytics: true,
+      volunteering: true,
+      idCards: true,
+      groups: true,
+      mentors: true,
+      events: true,
+      attendance: true,
+    } as Record<string, boolean>,
     visualOverrides: {} as Record<string, any>,
     rollbackSlots: [] as Array<{ index: number; name: string; savedAt: string; overrides: Record<string, any> }>,
     rollbackNextIndex: 0,
   };
+
+  // ─── GOD MODE SESSION ACTIVATION ────────────────────────────────────────────
+  app.post('/api/admin/activate', isAuthenticated, async (req, res) => {
+    const { password } = req.body;
+    if (password !== GOD_MODE_PASSWORD) {
+      return res.status(401).json({ message: "Invalid GOD Mode password" });
+    }
+    const token = randomBytes(32).toString('hex');
+    godModeTokens.add(token);
+    res.json({ token, message: "GOD Mode activated" });
+  });
+
+  app.delete('/api/admin/activate', (req, res) => {
+    const token = req.headers['x-god-mode-token'] as string | undefined;
+    if (token) godModeTokens.delete(token);
+    res.json({ message: "GOD Mode deactivated" });
+  });
 
   app.get('/api/dev-config', isAuthenticated, async (req, res) => {
     res.json(devConfig);
@@ -1211,8 +1240,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/admin/feature-flags', isAuthenticated, async (_req, res) => {
     res.json(devConfig.featureFlags);
   });
-  app.patch('/api/admin/feature-flags', isAuthenticated, async (req, res) => {
-    Object.assign(devConfig.featureFlags, req.body);
+  app.patch('/api/admin/feature-flags', isAuthenticated, requireGodMode, async (req, res) => {
+    const allowed = ['donations','analytics','volunteering','idCards','groups','mentors','events','attendance'];
+    for (const key of allowed) {
+      if (key in req.body && typeof req.body[key] === 'boolean') {
+        (devConfig.featureFlags as any)[key] = req.body[key];
+      }
+    }
     res.json(devConfig.featureFlags);
   });
 
@@ -1220,11 +1254,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/admin/visual-overrides', isAuthenticated, async (_req, res) => {
     res.json(devConfig.visualOverrides);
   });
-  app.patch('/api/admin/visual-overrides', isAuthenticated, async (req, res) => {
+  app.patch('/api/admin/visual-overrides', isAuthenticated, requireGodMode, async (req, res) => {
     Object.assign(devConfig.visualOverrides, req.body);
     res.json(devConfig.visualOverrides);
   });
-  app.delete('/api/admin/visual-overrides', isAuthenticated, async (_req, res) => {
+  app.delete('/api/admin/visual-overrides', isAuthenticated, requireGodMode, async (_req, res) => {
     devConfig.visualOverrides = {};
     res.json({ cleared: true });
   });
@@ -1237,7 +1271,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       currentOverrides: devConfig.visualOverrides,
     });
   });
-  app.post('/api/admin/rollback-slots', isAuthenticated, async (req, res) => {
+  app.post('/api/admin/rollback-slots', isAuthenticated, requireGodMode, async (req, res) => {
     const { name } = req.body;
     const slotIndex = devConfig.rollbackNextIndex % 5;
     const slot = {
@@ -1254,7 +1288,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     devConfig.rollbackNextIndex = (devConfig.rollbackNextIndex + 1);
     res.json(slot);
   });
-  app.post('/api/admin/rollback-slots/:index/restore', isAuthenticated, async (req, res) => {
+  app.post('/api/admin/rollback-slots/:index/restore', isAuthenticated, requireGodMode, async (req, res) => {
     const idx = parseInt(req.params.index);
     const slot = devConfig.rollbackSlots.find((s: any) => s.index === idx);
     if (!slot) return res.status(404).json({ message: "Slot not found" });
@@ -1277,7 +1311,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
-  app.post('/api/admin/seed/reset', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/seed/reset', isAuthenticated, requireGodMode, async (req: any, res) => {
     try {
       const ms = (storage as any).memStore;
       if (ms && ms.resetAndReseed) {
@@ -1289,7 +1323,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (err: any) { res.status(500).json({ message: err.message }); }
   });
-  app.post('/api/admin/seed/add', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/seed/add', isAuthenticated, requireGodMode, async (req: any, res) => {
     try {
       const { count = 5, entity = "devotees" } = req.body;
       const userId = req.user?.claims?.sub || "god-mode";

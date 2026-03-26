@@ -30,6 +30,7 @@ import {
   Terminal, Flag, Sprout, RotateCw, Send
 } from "lucide-react";
 import { useVisualEditor } from "@/contexts/VisualEditorContext";
+import { adminFetch } from "@/contexts/DevModeContext";
 
 const ICON_OPTIONS = [
   "Home", "Users", "Building", "GraduationCap", "Calendar", "Heart",
@@ -1081,10 +1082,8 @@ function FeatureFlagsPanel() {
 
   const updateMutation = useMutation({
     mutationFn: (flags: Record<string, boolean>) =>
-      fetch("/api/admin/feature-flags", {
+      adminFetch("/api/admin/feature-flags", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify(flags),
       }).then(r => r.json()),
     onSuccess: () => {
@@ -1158,7 +1157,7 @@ function SeedManagerPanel() {
   const { data: counts, isLoading } = useQuery<any>({ queryKey: ["/api/admin/seed/counts"] });
 
   const resetMutation = useMutation({
-    mutationFn: () => fetch("/api/admin/seed/reset", { method: "POST", credentials: "include" }).then(r => r.json()),
+    mutationFn: () => adminFetch("/api/admin/seed/reset", { method: "POST" }).then(r => r.json()),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api"] });
       setConfirmReset(false);
@@ -1168,9 +1167,8 @@ function SeedManagerPanel() {
 
   const addMutation = useMutation({
     mutationFn: ({ entity, count }: { entity: string; count: number }) =>
-      fetch("/api/admin/seed/add", {
-        method: "POST", credentials: "include",
-        headers: { "Content-Type": "application/json" },
+      adminFetch("/api/admin/seed/add", {
+        method: "POST",
         body: JSON.stringify({ entity, count }),
       }).then(r => r.json()),
     onSuccess: (data) => {
