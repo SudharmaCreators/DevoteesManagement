@@ -1,3 +1,4 @@
+import { useState, useRef } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,13 +7,17 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Header } from "@/components/Layout/Header";
 import { LoadingSpinner } from "@/components/Common/LoadingSpinner";
 import { 
   ArrowLeft, Phone, Mail, MapPin, Calendar, Briefcase, 
   Star, Heart, Users, Clock, TrendingUp, Activity,
-  AlertCircle, User, Home
+  AlertCircle, User, Home, FileText, Upload, Trash2, Download, Camera
 } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { 
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend 
@@ -32,10 +37,23 @@ function monthLabel(date: string | Date) {
   return new Date(date).toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
 }
 
+interface DevoteeDoc {
+  id: string;
+  devoteeId: number;
+  type: string;
+  filename: string;
+  base64: string;
+  uploadedAt: string;
+}
+
 export default function DevoteeProfilePage() {
   const [match, params] = useRoute("/devotees/:id");
   const [, navigate] = useLocation();
   const id = params?.id ? parseInt(params.id) : null;
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [docType, setDocType] = useState("Aadhaar Card");
 
   const { data: devotee, isLoading: devoteeLoading } = useQuery<Devotee>({
     queryKey: ["/api/devotees", id],
@@ -54,6 +72,42 @@ export default function DevoteeProfilePage() {
     queryFn: () => fetch(`/api/devotees/${id}/analytics`).then(r => r.json()),
     enabled: !!id,
   });
+
+  const { data: documents = [] } = useQuery<DevoteeDoc[]>({
+    queryKey: ["/api/devotees", id, "documents"],
+    queryFn: () => fetch(`/api/devotees/${id}/documents`).then(r => r.json()),
+    enabled: !!id,
+  });
+
+  const uploadDocMutation = useMutation({
+    mutationFn: async ({ type, filename, base64 }: { type: string; filename: string; base64: string }) =>
+      apiRequest("POST", `/api/devotees/${id}/documents`, { type, filename, base64 }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/devotees", id, "documents"] });
+      toast({ title: "Document uploaded", description: "Document saved successfully." });
+    },
+    onError: () => toast({ title: "Upload failed", variant: "destructive" }),
+  });
+
+  const deleteDocMutation = useMutation({
+    mutationFn: async (docId: string) => apiRequest("DELETE", `/api/devotees/${id}/documents/${docId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/devotees", id, "documents"] });
+      toast({ title: "Document deleted" });
+    },
+  });
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const base64 = ev.target?.result as string;
+      uploadDocMutation.mutate({ type: docType, filename: file.name, base64 });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
 
   if (!id || devoteeLoading) {
     return (
@@ -242,11 +296,15 @@ export default function DevoteeProfilePage() {
 
         {/* ── TABS ────────────────────────────────────────────────────── */}
         <Tabs defaultValue="details" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="attendance">Attendance</TabsTrigger>
             <TabsTrigger value="donations">Donations</TabsTrigger>
             <TabsTrigger value="volunteering">Volunteering</TabsTrigger>
+            <TabsTrigger value="documents">
+              <FileText className="w-3.5 h-3.5 mr-1 inline" />Documents
+              {documents.length > 0 && <Badge className="ml-1 text-xs px-1 py-0 h-4">{documents.length}</Badge>}
+            </TabsTrigger>
           </TabsList>
 
           {/* ── DETAILS TAB ────────────────────────────────────────────── */}
@@ -547,6 +605,120 @@ export default function DevoteeProfilePage() {
                 </CardContent>
               </Card>
             )}
+          </TabsContent>
+
+          {/* ── DOCUMENTS TAB ───────────────────────────────────────────── */}
+          <TabsContent value="documents" className="mt-6 space-y-6">
+            {/* Upload panel */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Upload className="w-4 h-4" /> Upload Document
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-3 items-end">
+                  <div className="space-y-1.5">
+                    <p className="text-xs text-muted-foreground">Document Type</p>
+                    <Select value={docType} onValueChange={setDocType}>
+                      <SelectTrigger className="w-48">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Aadhaar Card">Aadhaar Card</SelectItem>
+                        <SelectItem value="PAN Card">PAN Card</SelectItem>
+                        <SelectItem value="Passport">Passport</SelectItem>
+                        <SelectItem value="Voter ID">Voter ID</SelectItem>
+                        <SelectItem value="Driving Licence">Driving Licence</SelectItem>
+                        <SelectItem value="Photo">Photo</SelectItem>
+                        <SelectItem value="Certificate">Certificate</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*,.pdf"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                  />
+                  <Button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadDocMutation.isPending}
+                    className="bg-primary text-primary-foreground"
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    {uploadDocMutation.isPending ? "Uploading..." : "Choose File & Upload"}
+                  </Button>
+                  <p className="text-xs text-muted-foreground">Accepts: images, PDF (stored in-memory)</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Document list */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <FileText className="w-4 h-4" /> Stored Documents ({documents.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {documents.length === 0 ? (
+                  <div className="text-center py-10 text-muted-foreground">
+                    <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                    <p className="text-sm">No documents uploaded yet.</p>
+                    <p className="text-xs mt-1">Use the upload panel above to add documents.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {documents.map((doc: DevoteeDoc) => (
+                      <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                            {doc.base64?.startsWith("data:image") ? (
+                              <img src={doc.base64} alt={doc.filename} className="w-10 h-10 object-cover rounded-lg" />
+                            ) : (
+                              <FileText className="w-5 h-5 text-primary" />
+                            )}
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium">{doc.filename}</div>
+                            <div className="text-xs text-muted-foreground">
+                              <Badge variant="outline" className="text-xs mr-1">{doc.type}</Badge>
+                              {new Date(doc.uploadedAt).toLocaleDateString("en-IN")}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost" size="sm"
+                            onClick={() => {
+                              const a = document.createElement("a");
+                              a.href = doc.base64;
+                              a.download = doc.filename;
+                              a.click();
+                            }}
+                            title="Download"
+                          >
+                            <Download className="w-4 h-4 text-blue-600" />
+                          </Button>
+                          <Button
+                            variant="ghost" size="sm"
+                            onClick={() => deleteDocMutation.mutate(doc.id)}
+                            disabled={deleteDocMutation.isPending}
+                            className="text-destructive hover:text-destructive"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </main>

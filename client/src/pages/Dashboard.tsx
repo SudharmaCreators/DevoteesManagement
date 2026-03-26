@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/Layout/Header";
 import { StatsCard } from "@/components/Dashboard/StatsCard";
@@ -6,9 +7,18 @@ import { RecentActivities } from "@/components/Dashboard/RecentActivities";
 import { GroupManager } from "@/components/Groups/GroupManager";
 import { UpcomingEvents } from "@/components/Dashboard/UpcomingEvents";
 import { LoadingSpinner } from "@/components/Common/LoadingSpinner";
-import { Users, Building, Heart, Calendar } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { Users, Building, Heart, Calendar, MessageSquare, Send } from "lucide-react";
 
 export default function Dashboard() {
+  const { toast } = useToast();
+  const [bulkMessageGroup, setBulkMessageGroup] = useState<any>(null);
+  const [bulkMessage, setBulkMessage] = useState("");
+
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["/api/stats"],
   });
@@ -26,18 +36,28 @@ export default function Dashboard() {
   }
 
   const handleGroupActions = {
-    onAddGroup: () => console.log("Add group"),
-    onEditGroup: (group: any) => console.log("Edit group", group),
+    onAddGroup: () => toast({ title: "Add Group", description: "Use the Groups management page to add new groups." }),
+    onEditGroup: (group: any) => toast({ title: `Edit: ${group.groupName || group.name}`, description: "Use the Groups section to edit group details." }),
     onCreateWhatsAppGroup: (group: any) => {
-      if (group.whatsappLink) window.open(group.whatsappLink, '_blank');
-      else alert(`Create WhatsApp group for ${group.name}`);
+      if (group.whatsappLink) {
+        window.open(group.whatsappLink, '_blank');
+      } else {
+        const name = encodeURIComponent(group.groupName || group.name || "Group");
+        window.open(`https://wa.me/?text=Join+${name}`, '_blank');
+        toast({ title: "WhatsApp", description: `Opening WhatsApp for ${group.groupName || group.name}` });
+      }
     },
     onCreateTelegramGroup: (group: any) => {
-      if (group.telegramLink) window.open(group.telegramLink, '_blank');
-      else alert(`Create Telegram group for ${group.name}`);
+      if (group.telegramLink) {
+        window.open(group.telegramLink, '_blank');
+      } else {
+        window.open("https://t.me/", '_blank');
+        toast({ title: "Telegram", description: `Opening Telegram for ${group.groupName || group.name}` });
+      }
     },
     onSendBulkMessage: (group: any) => {
-      alert(`Send bulk message to ${group.name}`);
+      setBulkMessageGroup(group);
+      setBulkMessage("");
     }
   };
 
@@ -94,6 +114,48 @@ export default function Dashboard() {
           />
         )}
       </main>
+
+      {/* Bulk Message Dialog */}
+      <Dialog open={!!bulkMessageGroup} onOpenChange={() => setBulkMessageGroup(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-primary" />
+              Bulk Message — {bulkMessageGroup?.groupName || bulkMessageGroup?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Compose a message to send to all {bulkMessageGroup?.memberCount || "all"} members of this group.
+            </p>
+            <div className="space-y-1.5">
+              <Label>Message</Label>
+              <textarea
+                className="w-full min-h-[100px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
+                placeholder="Type your message here..."
+                value={bulkMessage}
+                onChange={e => setBulkMessage(e.target.value)}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setBulkMessageGroup(null)}>Cancel</Button>
+              <Button
+                onClick={() => {
+                  if (!bulkMessage.trim()) return;
+                  const encoded = encodeURIComponent(bulkMessage);
+                  window.open(`https://wa.me/?text=${encoded}`, '_blank');
+                  toast({ title: "Message Ready", description: "WhatsApp opened with your message. Send it to the group members." });
+                  setBulkMessageGroup(null);
+                }}
+                disabled={!bulkMessage.trim()}
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                <Send className="w-4 h-4 mr-2" /> Send via WhatsApp
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

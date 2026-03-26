@@ -723,6 +723,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put('/api/notifications/:id/pin', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const ms = (storage as any).memStore as MemoryStorage;
+      const updated = ms.pinNotification(id);
+      if (!updated) return res.status(404).json({ message: "Notification not found" });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to pin notification" });
+    }
+  });
+
+  app.put('/api/notifications/:id/unpin', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const ms = (storage as any).memStore as MemoryStorage;
+      const updated = ms.unpinNotification(id);
+      if (!updated) return res.status(404).json({ message: "Notification not found" });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to unpin notification" });
+    }
+  });
+
+  // Document routes
+  app.get('/api/devotees/:id/documents', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const ms = (storage as any).memStore as MemoryStorage;
+      const docs = ms.getDocuments(id);
+      res.json(docs);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch documents" });
+    }
+  });
+
+  app.post('/api/devotees/:id/documents', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { type, filename, base64 } = req.body;
+      if (!type || !filename || !base64) {
+        return res.status(400).json({ message: "type, filename, and base64 are required" });
+      }
+      const ms = (storage as any).memStore as MemoryStorage;
+      const doc = ms.addDocument(id, { type, filename, base64 });
+      res.json(doc);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to add document" });
+    }
+  });
+
+  app.delete('/api/devotees/:id/documents/:docId', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { docId } = req.params;
+      const ms = (storage as any).memStore as MemoryStorage;
+      const success = ms.deleteDocument(id, docId);
+      res.status(success ? 204 : 404).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete document" });
+    }
+  });
+
   // Users management routes (admin/manager)
   app.get('/api/users', isAuthenticated, async (req, res) => {
     try {
