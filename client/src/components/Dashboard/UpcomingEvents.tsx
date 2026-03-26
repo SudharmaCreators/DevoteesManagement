@@ -101,7 +101,7 @@ export function UpcomingEvents() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <h3 className="font-semibold text-sm text-foreground truncate">{event.title}</h3>
+                    <h3 className="font-semibold text-sm text-foreground break-words">{event.title}</h3>
                     <Badge className={`text-xs mt-1 ${EVENT_TYPE_COLORS[event.eventType] || "bg-muted text-muted-foreground"}`}>
                       {event.eventType}
                     </Badge>
@@ -121,7 +121,7 @@ export function UpcomingEvents() {
                     {event.startTime ? ` · ${event.startTime}` : ""}
                   </span>
                   {event.location && (
-                    <span className="flex items-center gap-1 truncate">
+                    <span className="flex items-center gap-1 break-words" title={event.location}>
                       <MapPin className="w-3 h-3 flex-shrink-0" />
                       {event.location}
                     </span>

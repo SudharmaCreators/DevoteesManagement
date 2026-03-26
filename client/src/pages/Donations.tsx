@@ -280,7 +280,7 @@ export default function Donations() {
                           </div>
                         </TableCell>
                         <TableCell>{getTypeBadge(d.donationType)}</TableCell>
-                        <TableCell><span className="text-sm max-w-[120px] truncate block">{d.purpose || "General"}</span></TableCell>
+                        <TableCell><span className="text-sm max-w-[120px] break-words block" title={d.purpose || "General"}>{d.purpose || "General"}</span></TableCell>
                         <TableCell>
                           <span className="text-sm whitespace-nowrap">{new Date(d.donationDate).toLocaleDateString('en-IN')}</span>
                         </TableCell>

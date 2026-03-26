@@ -481,7 +481,7 @@ export default function Analytics() {
                         <div key={e.id} className="flex items-center gap-3 p-2 rounded-lg bg-muted/30">
                           <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
                           <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium truncate">{e.title}</div>
+                            <div className="text-sm font-medium break-words" title={e.title}>{e.title}</div>
                             <div className="text-xs text-muted-foreground">{new Date(e.eventDate).toLocaleDateString("en-IN")}</div>
                           </div>
                           <Badge variant="outline" className="text-xs capitalize flex-shrink-0">{e.eventType || "General"}</Badge>

@@ -747,7 +747,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Document routes
+  // Document routes — GET is authenticated; write ops require GOD Mode authorization
   app.get('/api/devotees/:id/documents', isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -759,7 +759,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/devotees/:id/documents', isAuthenticated, async (req, res) => {
+  app.post('/api/devotees/:id/documents', requireGodMode, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const { type, filename, base64 } = req.body;
@@ -774,7 +774,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/devotees/:id/documents/:docId', isAuthenticated, async (req, res) => {
+  app.delete('/api/devotees/:id/documents/:docId', requireGodMode, async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const { docId } = req.params;
