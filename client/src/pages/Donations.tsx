@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Heart, Plus, IndianRupee, CreditCard, Banknote, Gift, Edit, Trash2, CheckCircle, Clock, Search } from "lucide-react";
+import { Heart, Plus, IndianRupee, CreditCard, Banknote, Gift, Edit, Trash2, CheckCircle, Clock, Search, Printer, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
@@ -57,6 +57,7 @@ export default function Donations() {
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editDonation, setEditDonation] = useState<Donation | null>(null);
+  const [receiptDonation, setReceiptDonation] = useState<Donation | null>(null);
   const [formData, setFormData] = useState({
     devoteeId: "", amount: "", currency: "INR", donationType: "cash", purpose: "",
     donationDate: new Date().toISOString().slice(0, 10), paymentMethod: "cash",
@@ -293,7 +294,10 @@ export default function Donations() {
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-1">
-                            <Button variant="ghost" size="sm" onClick={() => openEdit(d)}><Edit className="w-4 h-4" /></Button>
+                            <Button variant="ghost" size="sm" onClick={() => openEdit(d)} title="Edit"><Edit className="w-4 h-4" /></Button>
+                            <Button variant="ghost" size="sm" onClick={() => setReceiptDonation(d)} title="Print Receipt" className="text-blue-600 hover:text-blue-700">
+                              <Printer className="w-4 h-4" />
+                            </Button>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive"><Trash2 className="w-4 h-4" /></Button>
@@ -320,6 +324,111 @@ export default function Donations() {
           </CardContent>
         </Card>
       </main>
+
+      {/* ── RECEIPT MODAL ─────────────────────────────────────────────── */}
+      {receiptDonation && (
+        <Dialog open onOpenChange={() => setReceiptDonation(null)}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <div className="flex items-center justify-between">
+                <DialogTitle className="flex items-center gap-2">
+                  <Printer className="w-5 h-5 text-primary" /> Donation Receipt
+                </DialogTitle>
+              </div>
+            </DialogHeader>
+            <div id="receipt-print-area" className="border border-border rounded-lg overflow-hidden">
+              {/* Receipt header */}
+              <div className="bg-gradient-to-r from-primary to-secondary p-5 text-white text-center">
+                <div className="text-xl font-bold">Madhav Parivar</div>
+                <div className="text-sm opacity-90">Devotional Community Organization</div>
+                <div className="text-xs opacity-75 mt-1">Donation Receipt</div>
+              </div>
+
+              <div className="p-5 space-y-4">
+                {/* Receipt number + date */}
+                <div className="flex justify-between text-sm">
+                  <div>
+                    <div className="text-xs text-muted-foreground">Receipt No.</div>
+                    <div className="font-mono font-bold">{receiptDonation.receiptNumber ? `#${receiptDonation.receiptNumber}` : `#RCP-${receiptDonation.id.toString().padStart(5, "0")}`}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs text-muted-foreground">Date</div>
+                    <div className="font-medium">{new Date(receiptDonation.donationDate).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}</div>
+                  </div>
+                </div>
+
+                <div className="border-t border-dashed border-border" />
+
+                {/* Donor */}
+                <div>
+                  <div className="text-xs text-muted-foreground mb-0.5">Received From</div>
+                  <div className="font-semibold text-lg">
+                    {receiptDonation.anonymousDonation ? "Anonymous Donor" : getDevoteeName(receiptDonation.devoteeId)}
+                  </div>
+                </div>
+
+                {/* Amount — large display */}
+                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 text-center">
+                  <div className="text-xs text-green-700 dark:text-green-300 mb-1">Amount Received</div>
+                  <div className="text-3xl font-bold text-green-700 dark:text-green-300">
+                    ₹{parseFloat(receiptDonation.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  </div>
+                  <div className="text-xs text-green-600 dark:text-green-400 mt-1 capitalize">
+                    {receiptDonation.currency} · {receiptDonation.paymentMethod || receiptDonation.donationType}
+                  </div>
+                </div>
+
+                {/* Details grid */}
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <div className="text-xs text-muted-foreground">Purpose</div>
+                    <div className="font-medium">{receiptDonation.purpose || "General Donation"}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground">Donation Type</div>
+                    <div className="font-medium capitalize">{receiptDonation.donationType}</div>
+                  </div>
+                  {receiptDonation.transactionId && (
+                    <div className="col-span-2">
+                      <div className="text-xs text-muted-foreground">Transaction ID</div>
+                      <div className="font-mono text-xs">{receiptDonation.transactionId}</div>
+                    </div>
+                  )}
+                  {receiptDonation.taxDeductible && (
+                    <div className="col-span-2 flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-md">
+                      <CheckCircle className="w-4 h-4 text-blue-600" />
+                      <span className="text-xs text-blue-700 dark:text-blue-300">Tax Deductible under Section 80G</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="border-t border-dashed border-border" />
+                <div className="text-center text-xs text-muted-foreground">
+                  This receipt is computer-generated and is valid without a signature.
+                  <br />Thank you for your generous contribution. Jai Swaminarayan 🙏
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setReceiptDonation(null)}>Close</Button>
+              <Button
+                onClick={() => {
+                  const area = document.getElementById("receipt-print-area");
+                  if (!area) return;
+                  const win = window.open("", "_blank", "width=600,height=700");
+                  if (!win) return;
+                  win.document.write(`<html><head><title>Receipt</title><style>body{font-family:sans-serif;padding:20px;}</style></head><body>${area.innerHTML}</body></html>`);
+                  win.document.close();
+                  win.print();
+                }}
+                className="bg-primary text-primary-foreground"
+              >
+                <Printer className="w-4 h-4 mr-2" /> Print Receipt
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">

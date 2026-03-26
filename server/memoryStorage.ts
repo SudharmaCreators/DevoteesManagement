@@ -38,9 +38,20 @@ export interface Notification {
   message: string;
   type: 'info' | 'success' | 'warning' | 'error';
   isRead: boolean;
+  isPinned: boolean;
   relatedEntity?: string;
   relatedId?: number;
   createdAt: Date;
+}
+
+// Document type for devotee documents
+export interface DevoteeDocument {
+  id: string;
+  devoteeId: number;
+  type: string;
+  filename: string;
+  base64: string;
+  uploadedAt: Date;
 }
 
 // In-memory storage implementation
@@ -60,6 +71,7 @@ export class MemoryStorage implements IStorage {
   private dashboardLayouts: Map<number, DashboardLayout> = new Map();
   private userPreferences: Map<string, UserPreferences> = new Map();
   public notifications: Map<number, Notification> = new Map();
+  public documentStore: Map<number, DevoteeDocument[]> = new Map();
 
   // Counter for auto-incrementing IDs
   private counters = {
@@ -306,14 +318,14 @@ export class MemoryStorage implements IStorage {
 
     // ─── NOTIFICATIONS ─────────────────────────────────────────────────────
     const sampleNotifications: Notification[] = [
-      { id: 1, userId: "dev-user-1", title: "New Devotee Registered", message: "Paresh Trivedi has been added to the system", type: "success", isRead: false, relatedEntity: "devotee", relatedId: 20, createdAt: d(1) },
-      { id: 2, userId: "dev-user-1", title: "Upcoming Event", message: "Holi Celebration is scheduled in 3 days", type: "info", isRead: false, relatedEntity: "event", relatedId: 1, createdAt: d(2) },
-      { id: 3, userId: "dev-user-1", title: "Donation Received", message: "₹50,000 donation received from Suresh Patel for Building Fund", type: "success", isRead: false, relatedEntity: "donation", createdAt: d(3) },
-      { id: 4, userId: "dev-user-1", title: "Low Attendance Alert", message: "Attendance for last satsang was below 60% - please follow up", type: "warning", isRead: false, relatedEntity: "attendance", createdAt: d(5) },
-      { id: 5, userId: "dev-user-1", title: "Mentor Assignment Needed", message: "5 devotees are without assigned mentors", type: "warning", isRead: true, relatedEntity: "mentor", createdAt: d(7) },
-      { id: 6, userId: "dev-user-1", title: "Event Archived", message: "Diwali Puja 2025 has been automatically archived", type: "info", isRead: true, relatedEntity: "event", relatedId: 10, createdAt: d(10) },
-      { id: 7, userId: "dev-user-1", title: "Profile Update", message: "Ramesh Sharma updated their profile information", type: "info", isRead: true, relatedEntity: "devotee", relatedId: 1, createdAt: d(12) },
-      { id: 8, userId: "dev-user-1", title: "Volunteer Hours Logged", message: "12 new volunteering records logged this week", type: "success", isRead: true, relatedEntity: "volunteering", createdAt: d(14) },
+      { id: 1, userId: "dev-user-1", title: "New Devotee Registered", message: "Paresh Trivedi has been added to the system", type: "success", isRead: false, isPinned: false, relatedEntity: "devotee", relatedId: 20, createdAt: d(1) },
+      { id: 2, userId: "dev-user-1", title: "Upcoming Event", message: "Janmashtami Mahotsav 2026 is scheduled in 18 days. Registration opens immediately. Please coordinate with Yuva Mandal for their drama performance.", type: "info", isRead: false, isPinned: true, relatedEntity: "event", relatedId: 1, createdAt: d(2) },
+      { id: 3, userId: "dev-user-1", title: "Donation Received", message: "₹50,000 donation received from Suresh Patel for Building Fund", type: "success", isRead: false, isPinned: false, relatedEntity: "donation", createdAt: d(3) },
+      { id: 4, userId: "dev-user-1", title: "Low Attendance Alert", message: "Attendance for last satsang was below 60% — please follow up with the Seva Squad to understand root cause and improve outreach", type: "warning", isRead: false, isPinned: false, relatedEntity: "attendance", createdAt: d(5) },
+      { id: 5, userId: "dev-user-1", title: "Mentor Assignment Needed", message: "5 devotees are without assigned mentors", type: "warning", isRead: true, isPinned: false, relatedEntity: "mentor", createdAt: d(7) },
+      { id: 6, userId: "dev-user-1", title: "Event Archived", message: "Diwali Puja 2025 has been automatically archived", type: "info", isRead: true, isPinned: false, relatedEntity: "event", relatedId: 10, createdAt: d(10) },
+      { id: 7, userId: "dev-user-1", title: "Profile Update", message: "Ramesh Sharma updated their profile information", type: "info", isRead: true, isPinned: false, relatedEntity: "devotee", relatedId: 1, createdAt: d(12) },
+      { id: 8, userId: "dev-user-1", title: "Volunteer Hours Logged", message: "12 new volunteering records logged this week", type: "success", isRead: true, isPinned: false, relatedEntity: "volunteering", createdAt: d(14) },
     ];
     sampleNotifications.forEach(n => { this.notifications.set(n.id, n); this.counters.notifications = Math.max(this.counters.notifications, n.id + 1); });
   }
@@ -959,6 +971,47 @@ export class MemoryStorage implements IStorage {
 
   deleteNotification(id: number): boolean {
     return this.notifications.delete(id);
+  }
+
+  pinNotification(id: number): Notification | undefined {
+    const n = this.notifications.get(id);
+    if (!n) return undefined;
+    const updated = { ...n, isPinned: true };
+    this.notifications.set(id, updated);
+    return updated;
+  }
+
+  unpinNotification(id: number): Notification | undefined {
+    const n = this.notifications.get(id);
+    if (!n) return undefined;
+    const updated = { ...n, isPinned: false };
+    this.notifications.set(id, updated);
+    return updated;
+  }
+
+  // Document operations
+  getDocuments(devoteeId: number): DevoteeDocument[] {
+    return this.documentStore.get(devoteeId) || [];
+  }
+
+  addDocument(devoteeId: number, doc: Omit<DevoteeDocument, 'id' | 'devoteeId' | 'uploadedAt'>): DevoteeDocument {
+    const existing = this.documentStore.get(devoteeId) || [];
+    const newDoc: DevoteeDocument = {
+      ...doc,
+      id: `doc_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      devoteeId,
+      uploadedAt: new Date(),
+    };
+    this.documentStore.set(devoteeId, [...existing, newDoc]);
+    return newDoc;
+  }
+
+  deleteDocument(devoteeId: number, docId: string): boolean {
+    const existing = this.documentStore.get(devoteeId) || [];
+    const filtered = existing.filter(d => d.id !== docId);
+    if (filtered.length === existing.length) return false;
+    this.documentStore.set(devoteeId, filtered);
+    return true;
   }
 
   // User listing (for admin/manager views)

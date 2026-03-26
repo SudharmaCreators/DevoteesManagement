@@ -178,6 +178,17 @@ Changelog:
   - DevMode banner overlap fixed (pt-7 applied to main content wrapper when banner active)
   - Seed Manager: resetAndReseed() + donations/volunteering support in seed/add endpoint
   - Visual Editor floating button in bottom-right corner (dev mode only)
+- March 26, 2026 (Session 2). Notifications, Donations, Analytics, DevoteeProfile upgrades:
+  - Notifications: isPinned field added; pin/unpin API endpoints; Header.tsx fully rewritten with
+    pinned-first sort (amber section), proper word-wrap, 520px scrollable panel, server-side persistence
+  - Document storage: MemoryStorage documentStore Map, document CRUD routes (/api/devotees/:id/documents),
+    DevoteeProfile now has 5th "Documents" tab with file upload (images/PDF), type selector, download, delete
+  - Donation Receipt Modal: Print Receipt (printer icon) button per row; branded receipt dialog with
+    org header, receipt number, amount display, 80G notice, and browser print functionality
+  - Analytics 4-tab layout: Overview, Devotees (age/gender/city/spiritual level), Donations (monthly/purpose/method), Events
+  - Dashboard group actions: replaced console.log/alert with toast notifications and real Bulk Message dialog
+  - Privacy verified: Dashboard shows only aggregate stats, no individual devotee profiles
+  - All 8 themes verified: devotional, matrix, ironman, ocean, forest, royal, sunset, midnight
 ```
 
 ## User Preferences
