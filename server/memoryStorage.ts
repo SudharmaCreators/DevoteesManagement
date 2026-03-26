@@ -133,12 +133,16 @@ export class MemoryStorage implements IStorage {
     // ─── GROUPS ────────────────────────────────────────────────────────────
     const sampleGroups: Group[] = [
       { id: 1, groupName: "Youth Satsang (Yuva Mandal)", description: "For devotees aged 16-30. Meets every Saturday evening for kirtan and discussion.", mentorId: 1, createdAt: d(600), updatedAt: now },
-      { id: 2, groupName: "Family Circle", description: "Family devotional activities, parenting support, and joint festivals.", groupName: "Family Circle", mentorId: null, createdAt: d(400), updatedAt: now },
+      { id: 2, groupName: "Family Circle", description: "Family devotional activities, parenting support, and joint festivals.", mentorId: null, createdAt: d(400), updatedAt: now },
       { id: 3, groupName: "Kirtan Mandali", description: "Weekly kirtan and bhajan group. Open to all levels. Meets every Wednesday.", mentorId: null, createdAt: d(700), updatedAt: now },
       { id: 4, groupName: "Seva Squad", description: "Volunteers for event setup, prasad, decoration, and logistics.", mentorId: null, createdAt: d(500), updatedAt: now },
       { id: 5, groupName: "Gita Study Circle", description: "Bhagavad Gita chapter-by-chapter study led by Prof. Nilesh Desai. Meets every Tuesday.", mentorId: null, createdAt: d(800), updatedAt: now },
       { id: 6, groupName: "Women's Satsang (Mahila Mandal)", description: "Women's devotional meetings every Thursday at the center.", mentorId: null, createdAt: d(550), updatedAt: now },
       { id: 7, groupName: "Health and Wellness Group", description: "Yoga, Pranayama, and Ayurvedic health awareness led by Dr. Hansa Joshi.", mentorId: null, createdAt: d(300), updatedAt: now },
+      { id: 8, groupName: "Golok Dham Satsang", description: "Exclusive study and meditation circle focused on the spiritual realm of Golok Vrindavan and its pastimes.", mentorId: 1, createdAt: d(200), updatedAt: now },
+      { id: 9, groupName: "IWC – Interfaith Wellness Circle", description: "Interfaith dialogue, community wellness events, and spiritual exchange with other traditions.", mentorId: null, createdAt: d(180), updatedAt: now },
+      { id: 10, groupName: "Katha Pravachan Group", description: "Monthly katha and pravachan sessions featuring visiting saints and in-house speakers from the community.", mentorId: 2, createdAt: d(250), updatedAt: now },
+      { id: 11, groupName: "Narayan Bhakt Sabha", description: "Dedicated followers of Lord Narayan who gather weekly for Vishnu Sahasranama chanting and Purana readings.", mentorId: null, createdAt: d(150), updatedAt: now },
     ];
     sampleGroups.forEach(g => { this.groups.set(g.id, g); this.counters.groups = Math.max(this.counters.groups, g.id + 1); });
 
