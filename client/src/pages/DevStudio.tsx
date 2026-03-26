@@ -26,8 +26,10 @@ import {
   BarChart3, CreditCard, GraduationCap, PanelTop, Type,
   Sliders, Sparkles, Tag, Move, Edit2, Search, Link2, Unlink2,
   Play, Square, Zap, Clock, Activity, Filter, Table, GitBranch,
-  CheckSquare, MinusSquare, ArrowRight, XCircle, Info
+  CheckSquare, MinusSquare, ArrowRight, XCircle, Info,
+  Terminal, Flag, Sprout, RotateCw, Send
 } from "lucide-react";
+import { useVisualEditor } from "@/contexts/VisualEditorContext";
 
 const ICON_OPTIONS = [
   "Home", "Users", "Building", "GraduationCap", "Calendar", "Heart",
@@ -908,7 +910,687 @@ function DataExport({ config, setImportJson, importJson, handleImport, importMut
   );
 }
 
-// ─── MAIN DEV STUDIO COMPONENT ────────────────────────────────────────────
+// ─── API CONSOLE ─────────────────────────────────────────────────────────────
+function ApiConsole() {
+  const [method, setMethod] = useState<"GET"|"POST"|"PATCH"|"DELETE">("GET");
+  const [endpoint, setEndpoint] = useState("/api/devotees");
+  const [body, setBody] = useState("");
+  const [response, setResponse] = useState<string | null>(null);
+  const [status, setStatus] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [history, setHistory] = useState<Array<{ method: string; endpoint: string; status: number; time: number }>>([]);
+
+  const PRESETS = [
+    { label: "List Devotees", method: "GET", endpoint: "/api/devotees", body: "" },
+    { label: "List Families", method: "GET", endpoint: "/api/families", body: "" },
+    { label: "List Events", method: "GET", endpoint: "/api/events", body: "" },
+    { label: "Stats", method: "GET", endpoint: "/api/stats", body: "" },
+    { label: "DB Counts", method: "GET", endpoint: "/api/admin/seed/counts", body: "" },
+    { label: "Rollback Slots", method: "GET", endpoint: "/api/admin/rollback-slots", body: "" },
+    { label: "Feature Flags", method: "GET", endpoint: "/api/admin/feature-flags", body: "" },
+    { label: "Visual Overrides", method: "GET", endpoint: "/api/admin/visual-overrides", body: "" },
+  ];
+
+  const send = async () => {
+    setLoading(true);
+    const t0 = Date.now();
+    try {
+      const opts: RequestInit = { method, credentials: "include", headers: { "Content-Type": "application/json" } };
+      if (method !== "GET" && body.trim()) opts.body = body;
+      const res = await fetch(endpoint, opts);
+      const elapsed = Date.now() - t0;
+      setStatus(res.status);
+      const text = await res.text();
+      try {
+        setResponse(JSON.stringify(JSON.parse(text), null, 2));
+      } catch {
+        setResponse(text);
+      }
+      setHistory(prev => [{ method, endpoint, status: res.status, time: elapsed }, ...prev.slice(0, 19)]);
+    } catch (e: any) {
+      setStatus(0);
+      setResponse(`Error: ${e.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="lg:col-span-2 space-y-4">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Terminal className="w-4 h-4 text-purple-500" /> API Console
+            </CardTitle>
+            <CardDescription>Send requests to any backend endpoint. Full REST support.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex gap-2">
+              <Select value={method} onValueChange={(v: any) => setMethod(v)}>
+                <SelectTrigger className="w-28 font-mono text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {["GET","POST","PATCH","DELETE"].map(m => (
+                    <SelectItem key={m} value={m}>
+                      <span className={
+                        m === "GET" ? "text-green-600" :
+                        m === "POST" ? "text-blue-600" :
+                        m === "PATCH" ? "text-yellow-600" : "text-red-600"
+                      }>{m}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                className="flex-1 font-mono text-xs"
+                value={endpoint}
+                onChange={e => setEndpoint(e.target.value)}
+                placeholder="/api/..."
+                onKeyDown={e => e.key === "Enter" && send()}
+              />
+              <Button onClick={send} disabled={loading} size="sm" className="gap-1.5">
+                <Send className="w-3.5 h-3.5" />
+                {loading ? "Sending..." : "Send"}
+              </Button>
+            </div>
+            {method !== "GET" && (
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Request Body (JSON)</label>
+                <textarea
+                  className="w-full h-24 font-mono text-xs border rounded-md p-2 bg-muted resize-y"
+                  value={body}
+                  onChange={e => setBody(e.target.value)}
+                  placeholder='{"key": "value"}'
+                />
+              </div>
+            )}
+            {response !== null && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Badge variant={status && status >= 200 && status < 300 ? "default" : "destructive"} className="text-xs font-mono">
+                    {status}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">Response</span>
+                  <Button variant="ghost" size="sm" className="ml-auto h-6 text-xs gap-1" onClick={() => navigator.clipboard.writeText(response)}>
+                    <Copy className="w-3 h-3" /> Copy
+                  </Button>
+                </div>
+                <pre className="bg-muted rounded-md p-3 text-xs font-mono overflow-auto max-h-72 whitespace-pre-wrap">{response}</pre>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Quick Presets</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {PRESETS.map(p => (
+                <Button key={p.label} variant="outline" size="sm" className="text-xs"
+                  onClick={() => { setMethod(p.method as any); setEndpoint(p.endpoint); setBody(p.body); }}>
+                  {p.label}
+                </Button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+      <div>
+        <Card className="h-full">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <History className="w-3.5 h-3.5" /> Request History
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {history.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-6">No requests yet</p>
+            ) : (
+              <div className="space-y-1">
+                {history.map((h, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs py-1 border-b last:border-0 cursor-pointer hover:bg-muted/40 rounded px-1"
+                    onClick={() => { setMethod(h.method as any); setEndpoint(h.endpoint); }}>
+                    <Badge variant={h.status >= 200 && h.status < 300 ? "default" : "destructive"} className="text-[10px] w-8 justify-center">{h.status}</Badge>
+                    <span className={`font-mono w-10 flex-shrink-0 ${
+                      h.method === "GET" ? "text-green-600" :
+                      h.method === "POST" ? "text-blue-600" :
+                      h.method === "PATCH" ? "text-yellow-600" : "text-red-600"
+                    }`}>{h.method}</span>
+                    <span className="truncate text-muted-foreground flex-1">{h.endpoint}</span>
+                    <span className="text-muted-foreground flex-shrink-0">{h.time}ms</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ─── FEATURE FLAGS ────────────────────────────────────────────────────────────
+function FeatureFlagsPanel() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: flagsData, isLoading } = useQuery<any>({ queryKey: ["/api/admin/feature-flags"] });
+
+  const updateMutation = useMutation({
+    mutationFn: (flags: Record<string, boolean>) =>
+      fetch("/api/admin/feature-flags", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(flags),
+      }).then(r => r.json()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/feature-flags"] });
+      toast({ title: "Feature flags updated", description: "Changes take effect immediately" });
+    },
+  });
+
+  const FLAG_META: Record<string, { label: string; desc: string; icon: string; color: string }> = {
+    donations: { label: "Donations Module", desc: "Enable donation tracking and financial reporting", icon: "💰", color: "green" },
+    analytics: { label: "Analytics Dashboard", desc: "Show advanced analytics and charts", icon: "📊", color: "blue" },
+    volunteering: { label: "Volunteering Module", desc: "Track volunteer hours and activities", icon: "🤝", color: "purple" },
+    idCards: { label: "ID Card Generator", desc: "Generate and print devotee ID cards", icon: "🪪", color: "orange" },
+    groups: { label: "Groups & Mandals", desc: "Community group management and messaging", icon: "👥", color: "indigo" },
+    mentors: { label: "Mentor System", desc: "Spiritual mentor assignment and tracking", icon: "🧘", color: "teal" },
+    events: { label: "Events Module", desc: "Event planning and attendance management", icon: "📅", color: "red" },
+    attendance: { label: "Attendance Tracking", desc: "Track event and satsang attendance", icon: "✅", color: "yellow" },
+  };
+
+  const flags = flagsData || {};
+
+  const toggle = (key: string) => {
+    updateMutation.mutate({ ...flags, [key]: !flags[key] });
+  };
+
+  if (isLoading) return <div className="flex items-center justify-center py-12"><RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Flag className="w-4 h-4 text-purple-500" /> Feature Flags
+          </CardTitle>
+          <CardDescription>Toggle application modules on/off. Changes apply immediately to all users without restart.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {Object.entries(FLAG_META).map(([key, meta]) => (
+              <div key={key} className={`flex items-start gap-3 p-3 rounded-lg border-2 transition-all ${flags[key] ? 'border-green-300 bg-green-50' : 'border-muted bg-muted/30'}`}>
+                <div className="text-2xl flex-shrink-0">{meta.icon}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium">{meta.label}</span>
+                    <Switch checked={!!flags[key]} onCheckedChange={() => toggle(key)} />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">{meta.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <p className="text-xs text-blue-700">
+              <strong>Note:</strong> Disabling a module hides it from the sidebar navigation. Data is preserved and the module can be re-enabled at any time.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ─── SEED MANAGER ────────────────────────────────────────────────────────────
+function SeedManagerPanel() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [addEntity, setAddEntity] = useState("devotees");
+  const [addCount, setAddCount] = useState(1);
+
+  const { data: counts, isLoading } = useQuery<any>({ queryKey: ["/api/admin/seed/counts"] });
+
+  const resetMutation = useMutation({
+    mutationFn: () => fetch("/api/admin/seed/reset", { method: "POST", credentials: "include" }).then(r => r.json()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api"] });
+      setConfirmReset(false);
+      toast({ title: "Database reset", description: "All data restored to original demo seed" });
+    },
+  });
+
+  const addMutation = useMutation({
+    mutationFn: ({ entity, count }: { entity: string; count: number }) =>
+      fetch("/api/admin/seed/add", {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entity, count }),
+      }).then(r => r.json()),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api"] });
+      toast({ title: "Records added", description: data.message || `Added new records` });
+    },
+  });
+
+  const ENTITY_META: Record<string, { label: string; icon: string; color: string }> = {
+    devotees: { label: "Devotees", icon: "🙏", color: "blue" },
+    families: { label: "Families", icon: "🏠", color: "green" },
+    events: { label: "Events", icon: "📅", color: "purple" },
+    donations: { label: "Donations", icon: "💰", color: "yellow" },
+    volunteering: { label: "Volunteering Records", icon: "🤝", color: "teal" },
+    attendance: { label: "Attendance Records", icon: "✅", color: "orange" },
+  };
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Sprout className="w-4 h-4 text-green-500" /> Current Data Counts
+          </CardTitle>
+          <CardDescription>Live snapshot of all in-memory records</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-2">{[...Array(6)].map((_, i) => <div key={i} className="h-8 bg-muted rounded animate-pulse" />)}</div>
+          ) : (
+            <div className="space-y-2">
+              {Object.entries(ENTITY_META).map(([key, meta]) => (
+                <div key={key} className="flex items-center justify-between p-2 rounded-lg bg-muted/40">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{meta.icon}</span>
+                    <span className="text-sm">{meta.label}</span>
+                  </div>
+                  <Badge variant="secondary" className="font-mono text-sm">
+                    {(counts as any)?.[key] ?? "—"}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="space-y-4">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Plus className="w-4 h-4 text-blue-500" /> Add Test Records
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Entity Type</label>
+              <Select value={addEntity} onValueChange={setAddEntity}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(ENTITY_META).map(([k, v]) => (
+                    <SelectItem key={k} value={k}>{v.icon} {v.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Count (1–50)</label>
+              <Input type="number" min={1} max={50} value={addCount} onChange={e => setAddCount(Math.max(1, Math.min(50, +e.target.value)))} />
+            </div>
+            <Button
+              className="w-full gap-2"
+              onClick={() => addMutation.mutate({ entity: addEntity, count: addCount })}
+              disabled={addMutation.isPending}
+            >
+              <Plus className="w-4 h-4" />
+              {addMutation.isPending ? "Adding..." : `Add ${addCount} ${ENTITY_META[addEntity]?.label}`}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-destructive/30">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2 text-destructive">
+              <RotateCw className="w-4 h-4" /> Full Reset
+            </CardTitle>
+            <CardDescription>Clears ALL data and restores original 20-devotee / 6-family demo seed.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!confirmReset ? (
+              <Button variant="destructive" className="w-full gap-2" onClick={() => setConfirmReset(true)}>
+                <AlertTriangle className="w-4 h-4" /> Reset to Demo Data
+              </Button>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-sm text-destructive font-medium">⚠️ This will erase all current data!</p>
+                <div className="flex gap-2">
+                  <Button variant="destructive" className="flex-1" onClick={() => resetMutation.mutate()} disabled={resetMutation.isPending}>
+                    {resetMutation.isPending ? "Resetting..." : "Yes, Reset Everything"}
+                  </Button>
+                  <Button variant="outline" className="flex-1" onClick={() => setConfirmReset(false)}>Cancel</Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ─── ROLLBACK PANEL ───────────────────────────────────────────────────────────
+function RollbackPanel() {
+  const { toast } = useToast();
+  const { rollbackSlots, saveToSlot, restoreSlot, isSaving, isEditMode, toggleEditMode } = useVisualEditor();
+  const [slotName, setSlotName] = useState("");
+
+  const handleSave = async () => {
+    await saveToSlot(slotName || undefined);
+    setSlotName("");
+    toast({ title: "Snapshot saved", description: "Visual state stored in rollback slot" });
+  };
+
+  const handleRestore = async (index: number) => {
+    await restoreSlot(index);
+    toast({ title: "State restored", description: `Rollback slot ${index + 1} applied` });
+  };
+
+  const filledSlots = rollbackSlots.filter(s => s.name && s.savedAt);
+  const emptySlotCount = 5 - filledSlots.length;
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="space-y-4">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <RotateCw className="w-4 h-4 text-purple-500" /> 5-Slot Circular Rollback
+            </CardTitle>
+            <CardDescription>
+              Save up to 5 visual snapshots. Saving beyond 5 overwrites the oldest slot automatically.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex gap-2">
+              <Input
+                placeholder="Snapshot name (optional)"
+                value={slotName}
+                onChange={e => setSlotName(e.target.value)}
+                className="text-sm"
+                onKeyDown={e => e.key === "Enter" && handleSave()}
+              />
+              <Button onClick={handleSave} disabled={isSaving} size="sm" className="gap-1.5 whitespace-nowrap">
+                <Save className="w-3.5 h-3.5" />
+                {isSaving ? "Saving..." : "Save Snapshot"}
+              </Button>
+            </div>
+            <div className="flex items-center justify-between p-2 bg-muted/40 rounded text-xs text-muted-foreground">
+              <span>Slots used: {filledSlots.length}/5</span>
+              <span>{emptySlotCount} empty {emptySlotCount === 1 ? "slot" : "slots"} remaining</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Info className="w-3.5 h-3.5" /> How It Works
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 text-xs text-muted-foreground">
+              <div className="flex gap-2 items-start">
+                <span className="text-purple-500 font-bold flex-shrink-0">1.</span>
+                <span>Enable Visual Editor mode using the floating button (bottom-right)</span>
+              </div>
+              <div className="flex gap-2 items-start">
+                <span className="text-purple-500 font-bold flex-shrink-0">2.</span>
+                <span>Click any UI element to select it, then modify its appearance</span>
+              </div>
+              <div className="flex gap-2 items-start">
+                <span className="text-purple-500 font-bold flex-shrink-0">3.</span>
+                <span>Save a snapshot here anytime during editing</span>
+              </div>
+              <div className="flex gap-2 items-start">
+                <span className="text-purple-500 font-bold flex-shrink-0">4.</span>
+                <span>Restore any slot to go back to that saved state</span>
+              </div>
+              <div className="flex gap-2 items-start">
+                <span className="text-purple-500 font-bold flex-shrink-0">5.</span>
+                <span>The circular buffer auto-overwrites the oldest slot when full</span>
+              </div>
+            </div>
+            <div className="mt-3">
+              <Button variant="outline" size="sm" className="w-full gap-2 text-xs" onClick={toggleEditMode}>
+                <Edit2 className="w-3.5 h-3.5" />
+                {isEditMode ? "Exit Visual Editor" : "Launch Visual Editor"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm">Saved Snapshots</CardTitle>
+          <CardDescription>Click Restore to apply any saved state</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {filledSlots.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <RotateCw className="w-10 h-10 mx-auto mb-2 opacity-30" />
+              <p className="text-sm">No snapshots saved yet</p>
+              <p className="text-xs mt-1">Save a snapshot to enable rollback</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {filledSlots.map((slot, i) => (
+                <div key={slot.index} className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors">
+                  <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-sm font-bold flex-shrink-0">
+                    {slot.index + 1}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">{slot.name || `Snapshot ${i + 1}`}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {slot.savedAt ? new Date(slot.savedAt).toLocaleString() : "—"}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {Object.keys(slot.overrides || {}).length} overrides
+                    </div>
+                  </div>
+                  <Button size="sm" variant="outline" className="text-xs gap-1 flex-shrink-0"
+                    onClick={() => handleRestore(slot.index)} disabled={isSaving}>
+                    <RotateCcw className="w-3 h-3" /> Restore
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ─── VISUAL OVERRIDES PANEL ───────────────────────────────────────────────────
+function VisualOverridesPanel() {
+  const { overrides, setOverride, clearOverride, clearAllOverrides, isEditMode, toggleEditMode, saveToSlot, isSaving, unsavedChanges, selectedElementId } = useVisualEditor();
+  const { toast } = useToast();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [newElementId, setNewElementId] = useState("");
+  const [color, setColor] = useState("#ffffff");
+  const [textColor, setTextColor] = useState("#000000");
+
+  const allIds = Object.keys(overrides);
+
+  const handleSaveAll = async () => {
+    await saveToSlot("Manual save from Visual Overrides panel");
+    toast({ title: "Overrides saved", description: `${allIds.length} override(s) persisted` });
+  };
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="space-y-4">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Paintbrush className="w-4 h-4 text-purple-500" /> Visual Overrides Manager
+            </CardTitle>
+            <CardDescription>
+              {allIds.length} active override{allIds.length !== 1 ? "s" : ""}. Toggle Visual Editor to apply changes by clicking elements.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex gap-2">
+              <Button variant={isEditMode ? "default" : "outline"} size="sm" className="gap-1.5 flex-1" onClick={toggleEditMode}>
+                <Edit2 className="w-3.5 h-3.5" />
+                {isEditMode ? "✓ Edit Mode ON" : "Enable Edit Mode"}
+              </Button>
+              <Button size="sm" className="gap-1.5 flex-1" onClick={handleSaveAll} disabled={isSaving || allIds.length === 0}>
+                <Save className="w-3.5 h-3.5" />
+                {isSaving ? "Saving..." : unsavedChanges > 0 ? `Save (${unsavedChanges})` : "Save All"}
+              </Button>
+            </div>
+            {isEditMode && (
+              <div className="p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
+                ✏️ Visual Editor is active. Click any element in the app to select it, then use the controls below to style it.
+              </div>
+            )}
+            {selectedElementId && (
+              <div className="p-2 bg-purple-50 border border-purple-200 rounded text-xs">
+                <div className="font-medium text-purple-700">Selected: <code className="bg-purple-100 px-1 rounded">{selectedElementId}</code></div>
+              </div>
+            )}
+            <div className="flex gap-2">
+              <Input
+                placeholder="Element ID (data-ve-id)"
+                value={newElementId}
+                onChange={e => setNewElementId(e.target.value)}
+                className="text-xs"
+              />
+              <Button size="sm" variant="outline" className="text-xs" onClick={() => {
+                if (newElementId) { setEditingId(newElementId); setNewElementId(""); }
+              }}>Edit</Button>
+            </div>
+            {clearAllOverrides && allIds.length > 0 && (
+              <Button variant="outline" size="sm" className="w-full text-xs text-destructive border-destructive/30 gap-1"
+                onClick={() => { clearAllOverrides(); toast({ title: "All overrides cleared" }); }}>
+                <Trash2 className="w-3 h-3" /> Clear All Overrides
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+
+        {(editingId || selectedElementId) && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Edit: <code className="text-xs bg-muted px-1 rounded">{editingId || selectedElementId}</code></CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {[
+                { field: "bgColor", label: "Background Color", type: "color" },
+                { field: "textColor", label: "Text Color", type: "color" },
+                { field: "borderColor", label: "Border Color", type: "color" },
+                { field: "fontSize", label: "Font Size", placeholder: "14px" },
+                { field: "fontWeight", label: "Font Weight", placeholder: "600" },
+                { field: "borderRadius", label: "Border Radius", placeholder: "8px" },
+                { field: "opacity", label: "Opacity", placeholder: "0.8" },
+                { field: "padding", label: "Padding", placeholder: "8px 16px" },
+                { field: "customCss", label: "Custom CSS", placeholder: "display: flex;" },
+              ].map(({ field, label, type, placeholder }) => {
+                const id = editingId || selectedElementId!;
+                const current = (overrides[id] as any)?.[field] || "";
+                return (
+                  <div key={field} className="flex items-center gap-2">
+                    <label className="text-xs text-muted-foreground w-28 flex-shrink-0">{label}</label>
+                    {type === "color" ? (
+                      <div className="flex gap-2 flex-1">
+                        <input type="color" value={current || "#ffffff"} onChange={e => setOverride(id, { [field]: e.target.value })} className="w-8 h-7 rounded cursor-pointer border" />
+                        <Input value={current} onChange={e => setOverride(id, { [field]: e.target.value })} className="text-xs flex-1" placeholder="#rrggbb" />
+                      </div>
+                    ) : (
+                      <Input value={current} onChange={e => setOverride(id, { [field]: e.target.value })} className="text-xs flex-1" placeholder={placeholder} />
+                    )}
+                    {current && (
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 flex-shrink-0"
+                        onClick={() => setOverride(id, { [field]: "" })}>
+                        <XCircle className="w-3 h-3" />
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
+              <div className="flex items-center justify-between">
+                <label className="text-xs text-muted-foreground">Hide Element</label>
+                <Switch
+                  checked={!!overrides[editingId || selectedElementId!]?.hidden}
+                  onCheckedChange={v => setOverride(editingId || selectedElementId!, { hidden: v })}
+                />
+              </div>
+              <Button variant="outline" size="sm" className="w-full text-xs text-destructive" onClick={() => {
+                const id = editingId || selectedElementId!;
+                clearOverride(id);
+                setEditingId(null);
+              }}>
+                <Trash2 className="w-3 h-3 mr-1" /> Remove Override
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm">Active Overrides</CardTitle>
+          <CardDescription>{allIds.length} element{allIds.length !== 1 ? "s" : ""} with visual overrides</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {allIds.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Paintbrush className="w-10 h-10 mx-auto mb-2 opacity-30" />
+              <p className="text-sm">No overrides yet</p>
+              <p className="text-xs mt-1">Enable edit mode and click elements to start styling</p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {allIds.map(id => {
+                const o = overrides[id];
+                return (
+                  <div key={id} className={`p-2 rounded-lg border text-xs cursor-pointer transition-colors ${editingId === id ? "border-purple-400 bg-purple-50" : "hover:bg-muted/40"}`}
+                    onClick={() => setEditingId(editingId === id ? null : id)}>
+                    <div className="flex items-center justify-between mb-1">
+                      <code className="text-[10px] bg-muted px-1 rounded">{id}</code>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={e => { e.stopPropagation(); clearOverride(id); }}>
+                          <Trash2 className="w-3 h-3 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {o.bgColor && <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full border" style={{ background: o.bgColor }} />bg</span>}
+                      {o.textColor && <span className="inline-flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full border" style={{ background: o.textColor }} />text</span>}
+                      {o.fontSize && <span className="text-muted-foreground">size:{o.fontSize}</span>}
+                      {o.fontWeight && <span className="text-muted-foreground">w:{o.fontWeight}</span>}
+                      {o.hidden && <Badge variant="destructive" className="text-[10px] h-4">hidden</Badge>}
+                      {o.customCss && <Badge variant="secondary" className="text-[10px] h-4">custom css</Badge>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export default function DevStudio() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -1083,6 +1765,14 @@ export default function DevStudio() {
     { id: "devops", label: "Dev Ops", icon: FileJson },
   ];
 
+  const TAB_ROW3 = [
+    { id: "api-console", label: "API Console", icon: Terminal },
+    { id: "feature-flags", label: "Feature Flags", icon: Flag },
+    { id: "seed-manager", label: "Seed Manager", icon: Sprout },
+    { id: "rollback", label: "Rollback", icon: RotateCw },
+    { id: "visual-overrides", label: "Visual Overrides", icon: Paintbrush },
+  ];
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <Header
@@ -1097,9 +1787,9 @@ export default function DevStudio() {
 
       <main className="flex-1 overflow-y-auto p-4 bg-background">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          {/* Two-row tab layout for 10 tabs */}
+          {/* Three-row tab layout for 15 tabs */}
           <div className="space-y-1 mb-5">
-            <div className="text-xs text-muted-foreground px-1 mb-1 font-medium">CONFIGURATION</div>
+            <div className="text-xs text-muted-foreground px-1 mb-1 font-medium tracking-wider">CONFIGURATION</div>
             <TabsList className="grid grid-cols-5 w-full bg-muted/60">
               {TAB_ROW1.map(({ id, label, icon: Icon }) => (
                 <TabsTrigger key={id} value={id} className="flex items-center gap-1.5 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm">
@@ -1107,10 +1797,18 @@ export default function DevStudio() {
                 </TabsTrigger>
               ))}
             </TabsList>
-            <div className="text-xs text-muted-foreground px-1 mt-3 mb-1 font-medium">GOD MODE TOOLS</div>
+            <div className="text-xs text-muted-foreground px-1 mt-3 mb-1 font-medium tracking-wider">GOD MODE TOOLS</div>
             <TabsList className="grid grid-cols-5 w-full bg-yellow-50 border border-yellow-200">
               {TAB_ROW2.map(({ id, label, icon: Icon }) => (
                 <TabsTrigger key={id} value={id} className="flex items-center gap-1.5 text-xs data-[state=active]:bg-yellow-400 data-[state=active]:text-black data-[state=active]:shadow-sm">
+                  <Icon className="w-3.5 h-3.5" /> {label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            <div className="text-xs text-muted-foreground px-1 mt-3 mb-1 font-medium tracking-wider">GOD MODE POWER</div>
+            <TabsList className="grid grid-cols-5 w-full bg-purple-50 border border-purple-200">
+              {TAB_ROW3.map(({ id, label, icon: Icon }) => (
+                <TabsTrigger key={id} value={id} className="flex items-center gap-1.5 text-xs data-[state=active]:bg-purple-500 data-[state=active]:text-white data-[state=active]:shadow-sm">
                   <Icon className="w-3.5 h-3.5" /> {label}
                 </TabsTrigger>
               ))}
@@ -1615,6 +2313,31 @@ export default function DevStudio() {
                 toast={toast}
               />
             </div>
+          </TabsContent>
+
+          {/* ── GOD MODE POWER: API CONSOLE ── */}
+          <TabsContent value="api-console">
+            <ApiConsole />
+          </TabsContent>
+
+          {/* ── GOD MODE POWER: FEATURE FLAGS ── */}
+          <TabsContent value="feature-flags">
+            <FeatureFlagsPanel />
+          </TabsContent>
+
+          {/* ── GOD MODE POWER: SEED MANAGER ── */}
+          <TabsContent value="seed-manager">
+            <SeedManagerPanel />
+          </TabsContent>
+
+          {/* ── GOD MODE POWER: ROLLBACK MANAGER ── */}
+          <TabsContent value="rollback">
+            <RollbackPanel />
+          </TabsContent>
+
+          {/* ── GOD MODE POWER: VISUAL OVERRIDES ── */}
+          <TabsContent value="visual-overrides">
+            <VisualOverridesPanel />
           </TabsContent>
         </Tabs>
       </main>

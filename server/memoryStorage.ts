@@ -1015,6 +1015,25 @@ export class MemoryStorage implements IStorage {
     return Object.entries(byMonth).map(([month, data]) => ({ month, ...data })).slice(-12);
   }
 
+  // Reset all data and re-seed with demo data
+  resetAndReseed() {
+    this.devotees.clear();
+    this.families.clear();
+    this.mentors.clear();
+    this.attendance.clear();
+    this.donations.clear();
+    this.events.clear();
+    this.volunteering.clear();
+    this.groups.clear();
+    this.groupEntries.clear();
+    this.mandals.clear();
+    this.sabhaLocations.clear();
+    this.dashboardLayouts.clear();
+    this.notifications.clear();
+    Object.keys(this.counters).forEach(k => (this.counters as any)[k] = 1);
+    this.initializeSampleData();
+  }
+
   // Extended analytics: volunteering hours by activity
   async getVolunteeringStats(): Promise<Array<{ activity: string; hours: number }>> {
     const records = Array.from(this.volunteering.values());
