@@ -4,12 +4,30 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Code2, Eye, EyeOff, AlertTriangle, X, Paintbrush, Navigation, Database, Layers } from "lucide-react";
+import { Code2, Eye, EyeOff, AlertTriangle, X, Layers } from "lucide-react";
 
 const DEV_CODE = "DevelopZ";
 
+// Module-level token store — allows VisualEditorContext and DevStudio to access the token
+// without prop-drilling or circular context dependencies.
+let _godModeToken: string | null = null;
+export const getGodModeToken = () => _godModeToken;
+export const setGodModeToken = (t: string | null) => { _godModeToken = t; };
+
+// Helper fetch that automatically includes the GOD Mode authorization token
+export async function adminFetch(url: string, opts: RequestInit = {}): Promise<Response> {
+  const token = _godModeToken;
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(opts.headers as Record<string, string> || {}),
+  };
+  if (token) headers['X-God-Mode-Token'] = token;
+  return fetch(url, { ...opts, headers, credentials: 'include' });
+}
+
 interface DevModeContextType {
   isDevMode: boolean;
+  godModeToken: string | null;
   activateDevMode: () => void;
   deactivateDevMode: () => void;
   showDevLogin: () => void;
@@ -19,29 +37,66 @@ const DevModeContext = createContext<DevModeContextType | undefined>(undefined);
 
 export function DevModeProvider({ children }: { children: React.ReactNode }) {
   const [isDevMode, setIsDevMode] = React.useState(false);
+  const [godModeToken, setToken] = React.useState<string | null>(null);
   const [showLogin, setShowLogin] = React.useState(false);
   const [code, setCode] = React.useState("");
   const [showCode, setShowCode] = React.useState(false);
   const [error, setError] = React.useState("");
+  const [isActivating, setIsActivating] = React.useState(false);
 
   const activateDevMode = useCallback(() => setIsDevMode(true), []);
-  const deactivateDevMode = useCallback(() => setIsDevMode(false), []);
+  const deactivateDevMode = useCallback(async () => {
+    const token = _godModeToken;
+    if (token) {
+      try {
+        await fetch('/api/admin/activate', {
+          method: 'DELETE',
+          headers: { 'X-God-Mode-Token': token },
+          credentials: 'include',
+        });
+      } catch {}
+    }
+    _godModeToken = null;
+    setToken(null);
+    setIsDevMode(false);
+  }, []);
+
   const showDevLogin = useCallback(() => { setShowLogin(true); setCode(""); setError(""); }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (code === DEV_CODE) {
+    if (code !== DEV_CODE) {
+      setError("Invalid developer code");
+      return;
+    }
+    setIsActivating(true);
+    try {
+      const res = await fetch('/api/admin/activate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ password: code }),
+      });
+      if (!res.ok) {
+        setError("Server rejected activation. Check password.");
+        return;
+      }
+      const data = await res.json();
+      _godModeToken = data.token;
+      setToken(data.token);
       setIsDevMode(true);
       setShowLogin(false);
       setCode("");
       setError("");
-    } else {
-      setError("Invalid developer code");
+    } catch {
+      setError("Failed to activate — server unreachable");
+    } finally {
+      setIsActivating(false);
     }
   };
 
   return (
-    <DevModeContext.Provider value={{ isDevMode, activateDevMode, deactivateDevMode, showDevLogin }}>
+    <DevModeContext.Provider value={{ isDevMode, godModeToken, activateDevMode, deactivateDevMode, showDevLogin }}>
       {children}
 
       {/* Dev Mode Active Banner */}
@@ -59,7 +114,7 @@ export function DevModeProvider({ children }: { children: React.ReactNode }) {
                 <Layers className="w-3 h-3" /> Dev Studio
               </button>
             </Link>
-            <Button size="sm" variant="ghost" className="h-6 px-2 text-xs text-black hover:bg-black/15 border border-black/20 ml-1" onClick={() => setIsDevMode(false)} data-testid="banner-button-exit-dev-mode">
+            <Button size="sm" variant="ghost" className="h-6 px-2 text-xs text-black hover:bg-black/15 border border-black/20 ml-1" onClick={deactivateDevMode} data-testid="banner-button-exit-dev-mode">
               <X className="w-2.5 h-2.5 mr-1" /> Exit
             </Button>
           </div>
@@ -87,6 +142,7 @@ export function DevModeProvider({ children }: { children: React.ReactNode }) {
                 onChange={e => { setCode(e.target.value); setError(""); }}
                 className={`pr-10 font-mono ${error ? "border-destructive" : ""}`}
                 autoFocus
+                disabled={isActivating}
               />
               <button
                 type="button"
@@ -103,11 +159,11 @@ export function DevModeProvider({ children }: { children: React.ReactNode }) {
               </div>
             )}
             <div className="flex gap-3">
-              <Button type="submit" className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-black">
+              <Button type="submit" className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-black" disabled={isActivating}>
                 <Code2 className="w-4 h-4 mr-2" />
-                Activate Developer Mode
+                {isActivating ? "Activating..." : "Activate Developer Mode"}
               </Button>
-              <Button type="button" variant="outline" onClick={() => setShowLogin(false)}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => setShowLogin(false)} disabled={isActivating}>Cancel</Button>
             </div>
           </form>
           <div className="text-xs text-muted-foreground text-center pt-2 border-t">

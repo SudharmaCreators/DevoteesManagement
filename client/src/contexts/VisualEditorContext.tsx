@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/queryClient';
+import { useQuery } from '@tanstack/react-query';
+import { adminFetch } from '@/contexts/DevModeContext';
 
 export interface VisualOverride {
   text?: string;
@@ -112,33 +112,31 @@ export function VisualEditorProvider({ children }: { children: React.ReactNode }
     setOverrides({});
     setUnsavedChanges(0);
     try {
-      await fetch('/api/admin/visual-overrides', { method: 'DELETE', credentials: 'include' });
+      await adminFetch('/api/admin/visual-overrides', { method: 'DELETE' });
     } catch {}
   }, []);
 
   const saveToSlot = useCallback(async (name?: string) => {
     setIsSaving(true);
     try {
-      await fetch('/api/admin/visual-overrides', {
+      await adminFetch('/api/admin/visual-overrides', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify(overrides),
       });
-      const slotRes = await fetch('/api/admin/rollback-slots', {
+      const slotRes = await adminFetch('/api/admin/rollback-slots', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ name: name || `Save ${new Date().toLocaleString()}` }),
       });
-      const slot = await slotRes.json();
-      setRollbackSlots(prev => {
-        const updated = [...prev];
-        const existing = updated.findIndex(s => s.index === slot.index);
-        if (existing >= 0) updated[existing] = slot;
-        else updated.push(slot);
-        return updated.sort((a, b) => a.index - b.index);
-      });
+      if (slotRes.ok) {
+        const slot = await slotRes.json();
+        setRollbackSlots(prev => {
+          const updated = [...prev];
+          const existing = updated.findIndex(s => s.index === slot.index);
+          if (existing >= 0) updated[existing] = slot;
+          else updated.push(slot);
+          return updated.sort((a, b) => a.index - b.index);
+        });
+      }
       baselineRef.current = JSON.parse(JSON.stringify(overrides));
       setUnsavedChanges(0);
     } finally {
@@ -149,15 +147,14 @@ export function VisualEditorProvider({ children }: { children: React.ReactNode }
   const restoreSlot = useCallback(async (index: number) => {
     setIsSaving(true);
     try {
-      const res = await fetch(`/api/admin/rollback-slots/${index}/restore`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-      const data = await res.json();
-      if (data.overrides) {
-        setOverrides(data.overrides);
-        baselineRef.current = JSON.parse(JSON.stringify(data.overrides));
-        setUnsavedChanges(0);
+      const res = await adminFetch(`/api/admin/rollback-slots/${index}/restore`, { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.overrides) {
+          setOverrides(data.overrides);
+          baselineRef.current = JSON.parse(JSON.stringify(data.overrides));
+          setUnsavedChanges(0);
+        }
       }
     } finally {
       setIsSaving(false);
@@ -173,7 +170,7 @@ export function VisualEditorProvider({ children }: { children: React.ReactNode }
       selectedElementId, setSelectedElementId,
     }}>
       {children}
-      {isEditMode && <VisualEditorStyles overrides={overrides} />}
+      <VisualEditorStyles overrides={overrides} />
     </VisualEditorContext.Provider>
   );
 }
