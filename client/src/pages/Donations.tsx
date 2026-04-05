@@ -415,11 +415,14 @@ export default function Donations() {
                 onClick={() => {
                   const area = document.getElementById("receipt-print-area");
                   if (!area) return;
-                  const win = window.open("", "_blank", "width=600,height=700");
+                  const win = window.open("", "_blank", "width=620,height=750");
                   if (!win) return;
-                  win.document.write(`<html><head><title>Receipt</title><style>body{font-family:sans-serif;padding:20px;}</style></head><body>${area.innerHTML}</body></html>`);
+                  const styles = Array.from(document.styleSheets)
+                    .map(s => { try { return Array.from(s.cssRules).map(r => r.cssText).join("\n"); } catch { return ""; } })
+                    .join("\n");
+                  win.document.write(`<!DOCTYPE html><html><head><title>Donation Receipt</title><style>${styles}\nbody{background:#fff;padding:24px;font-family:sans-serif;}</style></head><body>${area.innerHTML}</body></html>`);
                   win.document.close();
-                  win.print();
+                  win.addEventListener("load", () => { win.focus(); win.print(); });
                 }}
                 className="bg-primary text-primary-foreground"
               >

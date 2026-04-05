@@ -299,7 +299,7 @@ export function DevoteeForm({ devotee, onSuccess, onCancel }: DevoteeFormProps) 
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {formData.dateOfBirth ? (
-                        format(formData.dateOfBirth, "PPP")
+                        format(new Date(formData.dateOfBirth), "PPP")
                       ) : (
                         "Pick a date"
                       )}
@@ -308,7 +308,7 @@ export function DevoteeForm({ devotee, onSuccess, onCancel }: DevoteeFormProps) 
                   <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
                       mode="single"
-                      selected={formData.dateOfBirth}
+                      selected={formData.dateOfBirth ? new Date(formData.dateOfBirth) : undefined}
                       onSelect={(date) => {
                         handleInputChange("dateOfBirth", date);
                         setDateOfBirthOpen(false);
@@ -332,7 +332,7 @@ export function DevoteeForm({ devotee, onSuccess, onCancel }: DevoteeFormProps) 
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {formData.joinDate ? (
-                        format(formData.joinDate, "PPP")
+                        format(new Date(formData.joinDate), "PPP")
                       ) : (
                         "Pick a date"
                       )}
@@ -341,7 +341,7 @@ export function DevoteeForm({ devotee, onSuccess, onCancel }: DevoteeFormProps) 
                   <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
                       mode="single"
-                      selected={formData.joinDate}
+                      selected={formData.joinDate ? new Date(formData.joinDate) : undefined}
                       onSelect={(date) => {
                         handleInputChange("joinDate", date);
                         setJoinDateOpen(false);

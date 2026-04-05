@@ -46,7 +46,7 @@ export function DevoteeList() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: devotees = [], isLoading } = useQuery({
+  const { data: devotees = [], isLoading } = useQuery<Devotee[]>({
     queryKey: ["/api/devotees"],
   });
 

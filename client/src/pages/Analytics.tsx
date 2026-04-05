@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { Header } from "@/components/Layout/Header";
 import { LoadingSpinner } from "@/components/Common/LoadingSpinner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -63,87 +64,78 @@ export default function Analytics() {
   const attendanceTrends: Array<{ month: string; present: number; absent: number }> = analytics?.attendanceTrends || [];
   const volunteeringStats: Array<{ activity: string; hours: number }> = analytics?.volunteeringStats || [];
 
-  // Event type pie
-  const eventTypeCounts: Record<string, number> = {};
-  events.forEach((e) => {
-    const type = e.eventType || "Other";
-    eventTypeCounts[type] = (eventTypeCounts[type] || 0) + 1;
-  });
-  const eventTypeData = Object.entries(eventTypeCounts).map(([name, value]) => ({ name, value }));
+  const eventTypeData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    events.forEach((e) => { const t = e.eventType || "Other"; counts[t] = (counts[t] || 0) + 1; });
+    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+  }, [events]);
 
-  // Age group from devotees
-  const ageBuckets: Record<string, number> = { '18-25': 0, '26-35': 0, '36-45': 0, '46-55': 0, '56+': 0 };
-  devotees.forEach((d) => {
-    if (d.dateOfBirth) {
-      const age = Math.floor((Date.now() - new Date(d.dateOfBirth).getTime()) / (365.25 * 24 * 3600 * 1000));
-      if (age <= 25) ageBuckets['18-25']++;
-      else if (age <= 35) ageBuckets['26-35']++;
-      else if (age <= 45) ageBuckets['36-45']++;
-      else if (age <= 55) ageBuckets['46-55']++;
-      else ageBuckets['56+']++;
-    }
-  });
-  const ageGroupData = Object.entries(ageBuckets).map(([group, count]) => ({ group, count }));
+  const ageGroupData = useMemo(() => {
+    const buckets: Record<string, number> = { '18-25': 0, '26-35': 0, '36-45': 0, '46-55': 0, '56+': 0 };
+    devotees.forEach((d) => {
+      if (d.dateOfBirth) {
+        const a = Math.floor((Date.now() - new Date(d.dateOfBirth).getTime()) / (365.25 * 24 * 3600 * 1000));
+        if (a <= 25) buckets['18-25']++;
+        else if (a <= 35) buckets['26-35']++;
+        else if (a <= 45) buckets['36-45']++;
+        else if (a <= 55) buckets['46-55']++;
+        else buckets['56+']++;
+      }
+    });
+    return Object.entries(buckets).map(([group, count]) => ({ group, count }));
+  }, [devotees]);
 
-  // Gender distribution
-  const genderCounts: Record<string, number> = {};
-  devotees.forEach((d) => {
-    const g = d.gender || "Unknown";
-    genderCounts[g] = (genderCounts[g] || 0) + 1;
-  });
-  const genderData = Object.entries(genderCounts).map(([name, value]) => ({ name, value }));
+  const genderData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    devotees.forEach((d) => { const g = d.gender || "Unknown"; counts[g] = (counts[g] || 0) + 1; });
+    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+  }, [devotees]);
 
-  // Spiritual level distribution
-  const spiritCounts: Record<string, number> = {};
-  devotees.forEach((d) => {
-    const l = d.spiritualLevel || "Nutan";
-    spiritCounts[l] = (spiritCounts[l] || 0) + 1;
-  });
-  const spiritData = Object.entries(spiritCounts).map(([name, value]) => ({ name, value }));
+  const spiritData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    devotees.forEach((d) => { const l = d.spiritualLevel || "Nutan"; counts[l] = (counts[l] || 0) + 1; });
+    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+  }, [devotees]);
 
-  // City distribution
-  const cityCounts: Record<string, number> = {};
-  devotees.forEach((d) => {
-    if (d.city) cityCounts[d.city] = (cityCounts[d.city] || 0) + 1;
-  });
-  const cityData = Object.entries(cityCounts)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 8)
-    .map(([city, count]) => ({ city, count }));
+  const cityData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    devotees.forEach((d) => { if (d.city) counts[d.city] = (counts[d.city] || 0) + 1; });
+    return Object.entries(counts).sort(([, a], [, b]) => b - a).slice(0, 8).map(([city, count]) => ({ city, count }));
+  }, [devotees]);
 
-  // Donation by purpose
-  const purposeCounts: Record<string, number> = {};
-  donations.forEach((d) => {
-    const p = d.purpose || "General";
-    purposeCounts[p] = (purposeCounts[p] || 0) + parseFloat(d.amount || "0");
-  });
-  const purposeData = Object.entries(purposeCounts).map(([name, value]) => ({ name, value }));
+  const purposeData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    donations.forEach((d) => { const p = d.purpose || "General"; counts[p] = (counts[p] || 0) + parseFloat(d.amount || "0"); });
+    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+  }, [donations]);
 
-  // Donation by payment method
-  const payMethodCounts: Record<string, number> = {};
-  donations.forEach((d) => {
-    const m = d.paymentMethod || d.donationType || "Other";
-    payMethodCounts[m] = (payMethodCounts[m] || 0) + 1;
-  });
-  const payMethodData = Object.entries(payMethodCounts).map(([name, value]) => ({ name, value }));
+  const payMethodData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    donations.forEach((d) => { const m = d.paymentMethod || d.donationType || "Other"; counts[m] = (counts[m] || 0) + 1; });
+    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+  }, [donations]);
 
-  // Monthly donations
-  const monthlyDonations: Record<string, number> = {};
-  donations.forEach((d) => {
-    const key = new Date(d.donationDate).toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
-    monthlyDonations[key] = (monthlyDonations[key] || 0) + parseFloat(d.amount || "0");
-  });
-  const monthlyDonationData = Object.entries(monthlyDonations).map(([month, amount]) => ({ month, amount }));
+  const monthlyDonationData = useMemo(() => {
+    const monthly: Record<string, number> = {};
+    donations.forEach((d) => {
+      const key = new Date(d.donationDate).toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
+      monthly[key] = (monthly[key] || 0) + parseFloat(d.amount || "0");
+    });
+    return Object.entries(monthly).map(([month, amount]) => ({ month, amount }));
+  }, [donations]);
 
-  // Join date trend (devotees per month)
-  const joinTrend: Record<string, number> = {};
-  devotees.forEach((d) => {
-    if (d.joinDate) {
-      const key = new Date(d.joinDate).toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
-      joinTrend[key] = (joinTrend[key] || 0) + 1;
-    }
-  });
-  const joinTrendData = Object.entries(joinTrend).map(([month, count]) => ({ month, count }));
+  const joinTrendData = useMemo(() => {
+    const trend: Record<string, number> = {};
+    devotees.forEach((d) => {
+      if (d.joinDate) {
+        const key = new Date(d.joinDate).toLocaleDateString("en-IN", { month: "short", year: "2-digit" });
+        trend[key] = (trend[key] || 0) + 1;
+      }
+    });
+    return Object.entries(trend).map(([month, count]) => ({ month, count }));
+  }, [devotees]);
+
+  const totalDonationSum = useMemo(() => donations.reduce((s, d) => s + parseFloat(d.amount || "0"), 0), [donations]);
 
   if (isLoading) {
     return (
@@ -152,8 +144,6 @@ export default function Analytics() {
       </div>
     );
   }
-
-  const totalDonationSum = donations.reduce((s, d) => s + parseFloat(d.amount || "0"), 0);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
