@@ -69,6 +69,7 @@ export class MemoryStorage implements IStorage {
     sabhaLocations: 1,
     dashboardLayouts: 1,
     notifications: 1,
+    userPreferences: 1,
   };
 
   constructor() {
@@ -835,11 +836,11 @@ export class MemoryStorage implements IStorage {
   async createMandal(mandalData: InsertMandal): Promise<Mandal> {
     const now = new Date();
     const id = this.counters.mandals++;
-    const mandal: Mandal = {
+    const mandal = {
       id,
       ...mandalData,
       createdAt: now,
-    };
+    } as Mandal;
     this.mandals.set(id, mandal);
     return mandal;
   }
@@ -854,11 +855,11 @@ export class MemoryStorage implements IStorage {
   async createSabhaLocation(locationData: InsertSabhaLocation): Promise<SabhaLocation> {
     const now = new Date();
     const id = this.counters.sabhaLocations++;
-    const location: SabhaLocation = {
+    const location = {
       id,
       ...locationData,
       createdAt: now,
-    };
+    } as SabhaLocation;
     this.sabhaLocations.set(id, location);
     return location;
   }
@@ -873,12 +874,12 @@ export class MemoryStorage implements IStorage {
   async createDashboardLayout(layoutData: InsertDashboardLayout): Promise<DashboardLayout> {
     const now = new Date();
     const id = this.counters.dashboardLayouts++;
-    const layout: DashboardLayout = {
+    const layout = {
       id,
       ...layoutData,
       createdAt: now,
       updatedAt: now,
-    };
+    } as DashboardLayout;
     this.dashboardLayouts.set(id, layout);
     return layout;
   }
@@ -908,11 +909,13 @@ export class MemoryStorage implements IStorage {
 
   async upsertUserPreferences(preferencesData: InsertUserPreferences): Promise<UserPreferences> {
     const now = new Date();
-    const preferences: UserPreferences = {
+    const existing = this.userPreferences.get(preferencesData.userId);
+    const preferences = {
+      id: existing?.id ?? this.counters.userPreferences++,
       ...preferencesData,
-      createdAt: this.userPreferences.get(preferencesData.userId)?.createdAt || now,
+      createdAt: existing?.createdAt ?? now,
       updatedAt: now,
-    };
+    } as UserPreferences;
     this.userPreferences.set(preferencesData.userId, preferences);
     return preferences;
   }
@@ -926,7 +929,7 @@ export class MemoryStorage implements IStorage {
 
   async createNotification(data: InsertNotification): Promise<Notification> {
     const id = this.counters.notifications++;
-    const notification: Notification = { isPinned: false, isRead: false, ...data, id, createdAt: new Date() };
+    const notification = { isPinned: false, isRead: false, relatedId: null, ...data, id, createdAt: new Date() } as Notification;
     this.notifications.set(id, notification);
     return notification;
   }
@@ -997,7 +1000,7 @@ export class MemoryStorage implements IStorage {
   private auditLogCounter = 1;
 
   async createAuditLog(log: InsertAuditLog): Promise<AuditLog> {
-    const entry: AuditLog = { ...log, id: this.auditLogCounter++, createdAt: new Date() };
+    const entry = { entityId: null, ...log, id: this.auditLogCounter++, createdAt: new Date() } as AuditLog;
     this.auditLogStore.unshift(entry);
     if (this.auditLogStore.length > 500) this.auditLogStore.pop();
     return entry;

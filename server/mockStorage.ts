@@ -1,5 +1,4 @@
 
-import { IStorage } from "./storage";
 import {
   User,
   UpsertUser,
@@ -31,7 +30,7 @@ import {
   InsertUserPreferences,
 } from "@shared/schema";
 
-export class MockStorage implements IStorage {
+export class MockStorage {
   private users: User[] = [];
   private devotees: Devotee[] = [];
   private families: Family[] = [];
@@ -69,15 +68,15 @@ export class MockStorage implements IStorage {
       Object.assign(existing, userData, { updatedAt: new Date() });
       return existing;
     }
-    const newUser: User = {
+    const newUser = {
       ...userData,
       role: userData.role || "user",
       isActive: userData.isActive !== undefined ? userData.isActive : true,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    this.users.push(newUser);
-    return newUser;
+    this.users.push(newUser as User);
+    return newUser as User;
   }
 
   // Devotee operations
@@ -90,15 +89,15 @@ export class MockStorage implements IStorage {
   }
 
   async createDevotee(devotee: InsertDevotee): Promise<Devotee> {
-    const newDevotee: Devotee = {
+    const newDevotee = {
       ...devotee,
       id: this.nextId++,
       isActive: devotee.isActive !== undefined ? devotee.isActive : true,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    this.devotees.push(newDevotee);
-    return newDevotee;
+    this.devotees.push(newDevotee as Devotee);
+    return newDevotee as Devotee;
   }
 
   async updateDevotee(id: number, devotee: Partial<InsertDevotee>): Promise<Devotee> {
@@ -125,15 +124,15 @@ export class MockStorage implements IStorage {
   }
 
   async createFamily(family: InsertFamily): Promise<Family> {
-    const newFamily: Family = {
+    const newFamily = {
       ...family,
       id: this.nextId++,
       isActive: family.isActive !== undefined ? family.isActive : true,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    this.families.push(newFamily);
-    return newFamily;
+    this.families.push(newFamily as Family);
+    return newFamily as Family;
   }
 
   async updateFamily(id: number, family: Partial<InsertFamily>): Promise<Family> {
@@ -160,15 +159,15 @@ export class MockStorage implements IStorage {
   }
 
   async createMentor(mentor: InsertMentor): Promise<Mentor> {
-    const newMentor: Mentor = {
+    const newMentor = {
       ...mentor,
       id: this.nextId++,
       isActive: mentor.isActive !== undefined ? mentor.isActive : true,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    this.mentors.push(newMentor);
-    return newMentor;
+    this.mentors.push(newMentor as Mentor);
+    return newMentor as Mentor;
   }
 
   async updateMentor(id: number, mentor: Partial<InsertMentor>): Promise<Mentor> {
@@ -194,13 +193,13 @@ export class MockStorage implements IStorage {
   }
 
   async createAttendance(attendance: InsertAttendance): Promise<Attendance> {
-    const newAttendance: Attendance = {
+    const newAttendance = {
       ...attendance,
       id: this.nextId++,
       createdAt: new Date(),
     };
-    this.attendance.push(newAttendance);
-    return newAttendance;
+    this.attendance.push(newAttendance as Attendance);
+    return newAttendance as Attendance;
   }
 
   async updateAttendance(id: number, attendance: Partial<InsertAttendance>): Promise<Attendance> {
@@ -225,13 +224,13 @@ export class MockStorage implements IStorage {
   }
 
   async createDonation(donation: InsertDonation): Promise<Donation> {
-    const newDonation: Donation = {
+    const newDonation = {
       ...donation,
       id: this.nextId++,
       createdAt: new Date(),
     };
-    this.donations.push(newDonation);
-    return newDonation;
+    this.donations.push(newDonation as Donation);
+    return newDonation as Donation;
   }
 
   async updateDonation(id: number, donation: Partial<InsertDonation>): Promise<Donation> {
@@ -258,15 +257,15 @@ export class MockStorage implements IStorage {
   }
 
   async createEvent(event: InsertEvent): Promise<Event> {
-    const newEvent: Event = {
+    const newEvent = {
       ...event,
       id: this.nextId++,
       isActive: event.isActive !== undefined ? event.isActive : true,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    this.events.push(newEvent);
-    return newEvent;
+    this.events.push(newEvent as Event);
+    return newEvent as Event;
   }
 
   async updateEvent(id: number, event: Partial<InsertEvent>): Promise<Event> {
@@ -291,13 +290,13 @@ export class MockStorage implements IStorage {
   }
 
   async createVolunteering(volunteering: InsertVolunteering): Promise<Volunteering> {
-    const newVolunteering: Volunteering = {
+    const newVolunteering = {
       ...volunteering,
       id: this.nextId++,
       createdAt: new Date(),
     };
-    this.volunteering.push(newVolunteering);
-    return newVolunteering;
+    this.volunteering.push(newVolunteering as Volunteering);
+    return newVolunteering as Volunteering;
   }
 
   async updateVolunteering(id: number, volunteering: Partial<InsertVolunteering>): Promise<Volunteering> {
@@ -324,7 +323,7 @@ export class MockStorage implements IStorage {
   }
 
   async createGroup(group: InsertGroup): Promise<Group> {
-    const newGroup: Group = {
+    const newGroup = {
       ...group,
       id: this.nextId++,
       currentMembers: group.currentMembers || 0,
@@ -332,8 +331,8 @@ export class MockStorage implements IStorage {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    this.groups.push(newGroup);
-    return newGroup;
+    this.groups.push(newGroup as Group);
+    return newGroup as Group;
   }
 
   async updateGroup(id: number, group: Partial<InsertGroup>): Promise<Group> {
@@ -358,15 +357,15 @@ export class MockStorage implements IStorage {
   }
 
   async createGroupEntry(entry: InsertGroupEntry): Promise<GroupEntry> {
-    const newEntry: GroupEntry = {
+    const newEntry = {
       ...entry,
       id: this.nextId++,
       isActive: entry.isActive !== undefined ? entry.isActive : true,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    this.groupEntries.push(newEntry);
-    return newEntry;
+    this.groupEntries.push(newEntry as GroupEntry);
+    return newEntry as GroupEntry;
   }
 
   async updateGroupEntry(id: number, entry: Partial<InsertGroupEntry>): Promise<GroupEntry> {
@@ -389,14 +388,14 @@ export class MockStorage implements IStorage {
   }
 
   async createMandal(mandal: InsertMandal): Promise<Mandal> {
-    const newMandal: Mandal = {
+    const newMandal = {
       ...mandal,
       id: this.nextId++,
       isActive: mandal.isActive !== undefined ? mandal.isActive : true,
       createdAt: new Date(),
     };
-    this.mandals.push(newMandal);
-    return newMandal;
+    this.mandals.push(newMandal as Mandal);
+    return newMandal as Mandal;
   }
 
   // Sabha location operations
@@ -405,14 +404,14 @@ export class MockStorage implements IStorage {
   }
 
   async createSabhaLocation(location: InsertSabhaLocation): Promise<SabhaLocation> {
-    const newLocation: SabhaLocation = {
+    const newLocation = {
       ...location,
       id: this.nextId++,
       isActive: location.isActive !== undefined ? location.isActive : true,
       createdAt: new Date(),
     };
-    this.sabhaLocations.push(newLocation);
-    return newLocation;
+    this.sabhaLocations.push(newLocation as SabhaLocation);
+    return newLocation as SabhaLocation;
   }
 
   // Dashboard operations
@@ -421,15 +420,15 @@ export class MockStorage implements IStorage {
   }
 
   async createDashboardLayout(layout: InsertDashboardLayout): Promise<DashboardLayout> {
-    const newLayout: DashboardLayout = {
+    const newLayout = {
       ...layout,
       id: this.nextId++,
       isDefault: layout.isDefault || false,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    this.dashboardLayouts.push(newLayout);
-    return newLayout;
+    this.dashboardLayouts.push(newLayout as DashboardLayout);
+    return newLayout as DashboardLayout;
   }
 
   async updateDashboardLayout(id: number, layout: Partial<InsertDashboardLayout>): Promise<DashboardLayout> {
@@ -457,14 +456,14 @@ export class MockStorage implements IStorage {
       Object.assign(existing, preferences, { updatedAt: new Date() });
       return existing;
     }
-    const newPreferences: UserPreferences = {
+    const newPreferences = {
       ...preferences,
       id: this.nextId++,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    this.userPreferences.push(newPreferences);
-    return newPreferences;
+    this.userPreferences.push(newPreferences as UserPreferences);
+    return newPreferences as UserPreferences;
   }
 
   // Analytics operations
