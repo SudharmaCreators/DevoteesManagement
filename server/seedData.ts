@@ -2,6 +2,7 @@
 import { storage } from "./storage";
 import { db } from "./db";
 import { eventParticipation, groupMemberships } from "@shared/schema";
+import type { InsertGroupEntry } from "@shared/schema";
 
 export async function seedDemoData() {
   try {
@@ -547,24 +548,25 @@ export async function seedDemoData() {
       const volunteerGroup = allGroups.find(g => g.groupType === "volunteer");
       const sabhaGroup = allGroups.find(g => g.groupType === "sabha");
 
-      type EntryDef = { group: typeof familyGroup; count: number; makeEntry: (i: number) => object };
+      type EntryDef = { group: typeof familyGroup; count: number; makeEntry: (i: number) => InsertGroupEntry };
       const entryDefs: EntryDef[] = [
-        { group: familyGroup, count: 15, makeEntry: (i: number) => ({ groupId: familyGroup!.id, entryData: { familyName: `Demo Family ${i}`, headOfFamily: `Head ${i}`, totalMembers: 3 + (i % 4), fullAddress: `${i * 10} Demo Street`, mobileNumber: `98765${String(40000 + i).padStart(5, "0")}` }, uniqueMemberId: `FAM${String(i).padStart(3, "0")}`, qrIdentifier: `JAISHRIMADHAV_FAM${String(i).padStart(3, "0")}`, isActive: true }) },
-        { group: mentorGroup, count: 10, makeEntry: (i: number) => ({ groupId: mentorGroup!.id, entryData: { firstName: `Mentor${i}`, surname: "Prabhu", specialization: ["Gita", "Yoga", "Vedanta"][i % 3], experience: 5 + i, mobileNumber: `98765${String(50000 + i).padStart(5, "0")}`, maxMentees: 10 + i }, uniqueMemberId: `MEN${String(i).padStart(3, "0")}`, qrIdentifier: `JAISHRIMADHAV_MEN${String(i).padStart(3, "0")}`, isActive: true }) },
-        { group: volunteerGroup, count: 15, makeEntry: (i: number) => ({ groupId: volunteerGroup!.id, entryData: { firstName: `Vol${i}`, surname: "Seva", mobileNumber: `98765${String(60000 + i).padStart(5, "0")}`, volunteeringActivities: "Kitchen Seva, Decoration", availableHours: "Weekends", specialSkills: "Cooking" }, uniqueMemberId: `VOL${String(i).padStart(3, "0")}`, qrIdentifier: `JAISHRIMADHAV_VOL${String(i).padStart(3, "0")}`, isActive: true }) },
-        { group: sabhaGroup, count: 10, makeEntry: (i: number) => ({ groupId: sabhaGroup!.id, entryData: { firstName: `Sabha${i}`, surname: "Das", mobileNumber: `98765${String(70000 + i).padStart(5, "0")}`, dateOfJoining: `202${i % 5}-0${(i % 9) + 1}-01` }, uniqueMemberId: `SAB${String(i).padStart(3, "0")}`, qrIdentifier: `JAISHRIMADHAV_SAB${String(i).padStart(3, "0")}`, isActive: true }) },
+        { group: familyGroup, count: 15, makeEntry: (i: number): InsertGroupEntry => ({ groupId: familyGroup!.id, entryData: { familyName: `Demo Family ${i}`, headOfFamily: `Head ${i}`, totalMembers: 3 + (i % 4), fullAddress: `${i * 10} Demo Street`, mobileNumber: `98765${String(40000 + i).padStart(5, "0")}` }, uniqueMemberId: `FAM${String(i).padStart(3, "0")}`, qrIdentifier: `JAISHRIMADHAV_FAM${String(i).padStart(3, "0")}`, isActive: true }) },
+        { group: mentorGroup, count: 10, makeEntry: (i: number): InsertGroupEntry => ({ groupId: mentorGroup!.id, entryData: { firstName: `Mentor${i}`, surname: "Prabhu", specialization: ["Gita", "Yoga", "Vedanta"][i % 3], experience: 5 + i, mobileNumber: `98765${String(50000 + i).padStart(5, "0")}`, maxMentees: 10 + i }, uniqueMemberId: `MEN${String(i).padStart(3, "0")}`, qrIdentifier: `JAISHRIMADHAV_MEN${String(i).padStart(3, "0")}`, isActive: true }) },
+        { group: volunteerGroup, count: 15, makeEntry: (i: number): InsertGroupEntry => ({ groupId: volunteerGroup!.id, entryData: { firstName: `Vol${i}`, surname: "Seva", mobileNumber: `98765${String(60000 + i).padStart(5, "0")}`, volunteeringActivities: "Kitchen Seva, Decoration", availableHours: "Weekends", specialSkills: "Cooking" }, uniqueMemberId: `VOL${String(i).padStart(3, "0")}`, qrIdentifier: `JAISHRIMADHAV_VOL${String(i).padStart(3, "0")}`, isActive: true }) },
+        { group: sabhaGroup, count: 10, makeEntry: (i: number): InsertGroupEntry => ({ groupId: sabhaGroup!.id, entryData: { firstName: `Sabha${i}`, surname: "Das", mobileNumber: `98765${String(70000 + i).padStart(5, "0")}`, dateOfJoining: `202${i % 5}-0${(i % 9) + 1}-01` }, uniqueMemberId: `SAB${String(i).padStart(3, "0")}`, qrIdentifier: `JAISHRIMADHAV_SAB${String(i).padStart(3, "0")}`, isActive: true }) },
       ];
 
       for (const { group, count, makeEntry } of entryDefs) {
         if (!group) continue;
         for (let i = 1; i <= count; i++) {
-          await storage.createGroupEntry(makeEntry(i) as any);
+          await storage.createGroupEntry(makeEntry(i));
         }
       }
     }
 
     console.log("Demo data seeded successfully! (50 records per table)");
-  } catch (error: any) {
-    console.error("Error seeding demo data:", error?.message ?? error);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("Error seeding demo data:", message);
   }
 }
