@@ -535,9 +535,9 @@ export class DatabaseStorage implements IStorage {
       GROUP BY month, month_key
       ORDER BY month_key ASC
     `);
-    return (rows.rows as any[]).map(r => ({
-      month: r.month as string,
-      amount: parseFloat(r.amount as string) || 0,
+    return (rows.rows as Record<string, unknown>[]).map(r => ({
+      month: String(r.month ?? ""),
+      amount: parseFloat(String(r.amount ?? "0")) || 0,
     }));
   }
 
@@ -553,10 +553,10 @@ export class DatabaseStorage implements IStorage {
       GROUP BY month, month_key
       ORDER BY month_key ASC
     `);
-    return (rows.rows as any[]).map(r => ({
-      month: r.month as string,
-      present: parseInt(r.present as string) || 0,
-      absent: parseInt(r.absent as string) || 0,
+    return (rows.rows as Record<string, unknown>[]).map(r => ({
+      month: String(r.month ?? ""),
+      present: parseInt(String(r.present ?? "0")) || 0,
+      absent: parseInt(String(r.absent ?? "0")) || 0,
     }));
   }
 
@@ -570,9 +570,9 @@ export class DatabaseStorage implements IStorage {
       ORDER BY hours DESC
       LIMIT 10
     `);
-    return (rows.rows as any[]).map(r => ({
-      activity: r.activity as string,
-      hours: parseInt(r.hours as string) || 0,
+    return (rows.rows as Record<string, unknown>[]).map(r => ({
+      activity: String(r.activity ?? ""),
+      hours: parseInt(String(r.hours ?? "0")) || 0,
     }));
   }
 }

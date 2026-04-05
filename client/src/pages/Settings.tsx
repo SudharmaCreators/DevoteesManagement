@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Header } from "@/components/Layout/Header";
 import { EncryptionManager } from "@/components/Admin/EncryptionManager";
@@ -36,22 +36,55 @@ import {
   Key
 } from "lucide-react";
 
+interface UserPrefsData {
+  emailNotifications?: boolean;
+  newDevoteeNotifications?: boolean;
+  eventReminders?: boolean;
+  donationAlerts?: boolean;
+  birthdayReminders?: boolean;
+  systemMaintenance?: boolean;
+  [key: string]: unknown;
+}
+
 export default function Settings() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState("profile");
-  const [isLoading, setIsLoading] = useState(false);
 
   // User preferences query
-  const { data: preferences, isLoading: preferencesLoading } = useQuery({
+  const { data: preferences, isLoading: preferencesLoading } = useQuery<UserPrefsData>({
     queryKey: ["/api/user-preferences"],
   });
 
+  // Notification toggles — seeded from preferences when available
+  const [notifToggles, setNotifToggles] = useState({
+    emailNotifications: true,
+    newDevoteeNotifications: true,
+    eventReminders: true,
+    donationAlerts: false,
+    birthdayReminders: true,
+    systemMaintenance: true,
+  });
+
+  // Sync toggles when preferences load from server
+  useEffect(() => {
+    if (preferences) {
+      setNotifToggles({
+        emailNotifications: preferences.emailNotifications ?? true,
+        newDevoteeNotifications: preferences.newDevoteeNotifications ?? true,
+        eventReminders: preferences.eventReminders ?? true,
+        donationAlerts: preferences.donationAlerts ?? false,
+        birthdayReminders: preferences.birthdayReminders ?? true,
+        systemMaintenance: preferences.systemMaintenance ?? true,
+      });
+    }
+  }, [preferences]);
+
   // Update preferences mutation
   const updatePreferencesMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: UserPrefsData) => {
       return await apiRequest("POST", "/api/user-preferences", data);
     },
     onSuccess: () => {
@@ -70,8 +103,14 @@ export default function Settings() {
     },
   });
 
-  const handleSavePreferences = (newPreferences: any) => {
-    updatePreferencesMutation.mutate(newPreferences);
+  const handleToggle = (key: keyof typeof notifToggles, value: boolean) => {
+    const updated = { ...notifToggles, [key]: value };
+    setNotifToggles(updated);
+    updatePreferencesMutation.mutate({ ...preferences, ...updated });
+  };
+
+  const handleSavePreferences = () => {
+    updatePreferencesMutation.mutate({ ...preferences, ...notifToggles });
   };
 
   const tabs = [
@@ -279,53 +318,25 @@ export default function Settings() {
                         </CardHeader>
                         <CardContent className="space-y-6">
                           <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <Label className="text-base">Email Notifications</Label>
-                                <p className="text-sm text-muted-foreground">Receive notifications via email</p>
+                            {([
+                              { key: "emailNotifications", label: "Email Notifications", desc: "Receive notifications via email" },
+                              { key: "newDevoteeNotifications", label: "New Devotee Registration", desc: "Get notified when new devotees join" },
+                              { key: "eventReminders", label: "Event Reminders", desc: "Reminders for upcoming events" },
+                              { key: "donationAlerts", label: "Donation Alerts", desc: "Get notified about new donations" },
+                              { key: "birthdayReminders", label: "Birthday Reminders", desc: "Reminders for devotee birthdays" },
+                              { key: "systemMaintenance", label: "System Maintenance", desc: "Important system updates and maintenance" },
+                            ] as Array<{ key: keyof typeof notifToggles; label: string; desc: string }>).map(({ key, label, desc }) => (
+                              <div key={key} className="flex items-center justify-between">
+                                <div>
+                                  <Label className="text-base">{label}</Label>
+                                  <p className="text-sm text-muted-foreground">{desc}</p>
+                                </div>
+                                <Switch
+                                  checked={notifToggles[key]}
+                                  onCheckedChange={(v) => handleToggle(key, v)}
+                                />
                               </div>
-                              <Switch defaultChecked />
-                            </div>
-
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <Label className="text-base">New Devotee Registration</Label>
-                                <p className="text-sm text-muted-foreground">Get notified when new devotees join</p>
-                              </div>
-                              <Switch defaultChecked />
-                            </div>
-
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <Label className="text-base">Event Reminders</Label>
-                                <p className="text-sm text-muted-foreground">Reminders for upcoming events</p>
-                              </div>
-                              <Switch defaultChecked />
-                            </div>
-
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <Label className="text-base">Donation Alerts</Label>
-                                <p className="text-sm text-muted-foreground">Get notified about new donations</p>
-                              </div>
-                              <Switch />
-                            </div>
-
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <Label className="text-base">Birthday Reminders</Label>
-                                <p className="text-sm text-muted-foreground">Reminders for devotee birthdays</p>
-                              </div>
-                              <Switch defaultChecked />
-                            </div>
-
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <Label className="text-base">System Maintenance</Label>
-                                <p className="text-sm text-muted-foreground">Important system updates and maintenance</p>
-                              </div>
-                              <Switch defaultChecked />
-                            </div>
+                            ))}
                           </div>
                         </CardContent>
                       </Card>
@@ -405,7 +416,7 @@ export default function Settings() {
                   {/* Save Button */}
                   <div className="flex justify-end pt-6 border-t border-border">
                     <Button
-                      onClick={() => handleSavePreferences(preferences)}
+                      onClick={handleSavePreferences}
                       disabled={updatePreferencesMutation.isPending}
                     >
                       {updatePreferencesMutation.isPending ? (

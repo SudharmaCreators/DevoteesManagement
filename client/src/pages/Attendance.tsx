@@ -12,7 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
-import { Calendar, Plus, CheckCircle, XCircle, Clock, AlertCircle, Users, TrendingUp, Award, Search, Filter } from "lucide-react";
+import { Calendar, Plus, CheckCircle, XCircle, Clock, AlertCircle, Users, TrendingUp, Award, Search, Filter, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { Attendance, Devotee, Event } from "@shared/schema";
@@ -268,10 +269,25 @@ export default function AttendancePage() {
                             <TableCell className="text-sm text-muted-foreground">{record.checkInTime || "—"}</TableCell>
                             <TableCell className="text-sm text-muted-foreground capitalize">{record.recordedBy || "System"}</TableCell>
                             <TableCell>
-                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100"
-                                onClick={() => deleteMutation.mutate(record.id)}>
-                                <XCircle className="w-3.5 h-3.5" />
-                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100">
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Attendance Record</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Delete attendance record for {record.devoteeName} on {record.attendanceDate ? new Date(record.attendanceDate).toLocaleDateString("en-IN") : "this date"}? This cannot be undone.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => deleteMutation.mutate(record.id)} className="bg-destructive text-destructive-foreground">Delete</AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
                             </TableCell>
                           </TableRow>
                         ))}

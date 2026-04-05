@@ -24,15 +24,15 @@ export function DevoteeGroups() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: groups, isLoading } = useQuery({
+  const { data: groups = [], isLoading } = useQuery<Group[]>({
     queryKey: ["/api/groups"],
   });
 
-  const { data: mandals } = useQuery({
+  const { data: mandals = [] } = useQuery<unknown[]>({
     queryKey: ["/api/mandals"],
   });
 
-  const { data: sabhaLocations } = useQuery({
+  const { data: sabhaLocations = [] } = useQuery<unknown[]>({
     queryKey: ["/api/sabha-locations"],
   });
 
@@ -77,10 +77,10 @@ export function DevoteeGroups() {
     },
   });
 
-  const filteredGroups = groups?.filter((group: Group) =>
+  const filteredGroups = groups.filter((group: Group) =>
     group.groupName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     group.groupType.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
+  );
 
   const handleCreateGroup = (groupData: any) => {
     createGroupMutation.mutate(groupData);

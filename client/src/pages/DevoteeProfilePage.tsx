@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -135,48 +135,55 @@ export default function DevoteeProfilePage() {
     );
   }
 
-  // ─── Analytics Processing ────────────────────────────────────────────────
+  // ─── Analytics Processing (memoized) ─────────────────────────────────────
 
-  // Attendance trend by month
-  const attendanceByMonth: Record<string, { month: string; present: number; absent: number }> = {};
-  (analytics?.attendance || []).forEach((a: any) => {
-    const key = monthLabel(a.attendanceDate);
-    if (!attendanceByMonth[key]) attendanceByMonth[key] = { month: key, present: 0, absent: 0 };
-    if (a.status === "present") attendanceByMonth[key].present++;
-    else attendanceByMonth[key].absent++;
-  });
-  const attendanceData = Object.values(attendanceByMonth).slice(-12);
-  const totalPresent = (analytics?.attendance || []).filter((a: any) => a.status === "present").length;
-  const totalAttendance = (analytics?.attendance || []).length;
-  const attendanceRate = totalAttendance > 0 ? Math.round((totalPresent / totalAttendance) * 100) : 0;
+  const { attendanceData, totalPresent, totalAttendance, attendanceRate } = useMemo(() => {
+    const byMonth: Record<string, { month: string; present: number; absent: number }> = {};
+    (analytics?.attendance || []).forEach((a: any) => {
+      const key = monthLabel(a.attendanceDate);
+      if (!byMonth[key]) byMonth[key] = { month: key, present: 0, absent: 0 };
+      if (a.status === "present") byMonth[key].present++;
+      else byMonth[key].absent++;
+    });
+    const list = (analytics?.attendance || []);
+    const present = list.filter((a: any) => a.status === "present").length;
+    const total = list.length;
+    return {
+      attendanceData: Object.values(byMonth).slice(-12),
+      totalPresent: present,
+      totalAttendance: total,
+      attendanceRate: total > 0 ? Math.round((present / total) * 100) : 0,
+    };
+  }, [analytics?.attendance]);
 
-  // Donation trend by month
-  const donationByMonth: Record<string, { month: string; amount: number }> = {};
-  (analytics?.donations || []).forEach((d: any) => {
-    const key = monthLabel(d.donationDate);
-    if (!donationByMonth[key]) donationByMonth[key] = { month: key, amount: 0 };
-    donationByMonth[key].amount += parseFloat(d.amount || "0");
-  });
-  const donationData = Object.values(donationByMonth).slice(-12);
-  const totalDonated = (analytics?.donations || []).reduce((s: number, d: any) => s + parseFloat(d.amount || "0"), 0);
+  const { donationData, totalDonated, donationPieData } = useMemo(() => {
+    const byMonth: Record<string, { month: string; amount: number }> = {};
+    const byType: Record<string, number> = {};
+    (analytics?.donations || []).forEach((d: any) => {
+      const key = monthLabel(d.donationDate);
+      if (!byMonth[key]) byMonth[key] = { month: key, amount: 0 };
+      byMonth[key].amount += parseFloat(d.amount || "0");
+      byType[d.donationType] = (byType[d.donationType] || 0) + parseFloat(d.amount || "0");
+    });
+    const total = (analytics?.donations || []).reduce((s: number, d: any) => s + parseFloat(d.amount || "0"), 0);
+    return {
+      donationData: Object.values(byMonth).slice(-12),
+      totalDonated: total,
+      donationPieData: Object.entries(byType).map(([name, value]) => ({ name, value })),
+    };
+  }, [analytics?.donations]);
 
-  // Donation type breakdown
-  const donationByType: Record<string, number> = {};
-  (analytics?.donations || []).forEach((d: any) => {
-    donationByType[d.donationType] = (donationByType[d.donationType] || 0) + parseFloat(d.amount || "0");
-  });
-  const donationPieData = Object.entries(donationByType).map(([name, value]) => ({ name, value }));
-
-  // Volunteering activity frequency by month
-  const volByMonth: Record<string, { month: string; sessions: number; hours: number }> = {};
-  (analytics?.volunteering || []).forEach((v: any) => {
-    const key = monthLabel(v.activityDate);
-    if (!volByMonth[key]) volByMonth[key] = { month: key, sessions: 0, hours: 0 };
-    volByMonth[key].sessions++;
-    volByMonth[key].hours += (v.hours || 0);
-  });
-  const volData = Object.values(volByMonth).slice(-12);
-  const totalVolHours = (analytics?.volunteering || []).reduce((s: number, v: any) => s + (v.hours || 0), 0);
+  const { volData, totalVolHours } = useMemo(() => {
+    const byMonth: Record<string, { month: string; sessions: number; hours: number }> = {};
+    (analytics?.volunteering || []).forEach((v: any) => {
+      const key = monthLabel(v.activityDate);
+      if (!byMonth[key]) byMonth[key] = { month: key, sessions: 0, hours: 0 };
+      byMonth[key].sessions++;
+      byMonth[key].hours += (v.hours || 0);
+    });
+    const hours = (analytics?.volunteering || []).reduce((s: number, v: any) => s + (v.hours || 0), 0);
+    return { volData: Object.values(byMonth).slice(-12), totalVolHours: hours };
+  }, [analytics?.volunteering]);
 
   const initials = `${devotee.firstName?.[0] || ""}${devotee.lastName?.[0] || ""}`.toUpperCase();
 

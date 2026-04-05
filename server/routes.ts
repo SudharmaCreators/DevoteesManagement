@@ -1,9 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { MemoryStorage } from "./memoryStorage";
 // import { setupAuth, isAuthenticated } from "./replitAuth";
-
+import { parseIntSafe, errorMessage } from "./utils";
 import { randomBytes } from "crypto";
 
 // Mock authentication for development
@@ -14,7 +13,7 @@ const isAuthenticated = (req: any, res: any, next: any) => {
 
 // GOD Mode session management — server-side authorization for privileged admin endpoints
 const godModeTokens = new Set<string>();
-const GOD_MODE_PASSWORD = "DevelopZ";
+const GOD_MODE_PASSWORD = process.env.GOD_MODE_PASSWORD || "DevelopZ";
 
 const requireGodMode = (req: any, res: any, next: any) => {
   const token = req.headers['x-god-mode-token'] as string | undefined;
@@ -82,7 +81,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/devotees/:id', isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
       const devotee = await storage.getDevotee(id);
       if (!devotee) {
         return res.status(404).json({ message: "Devotee not found" });
@@ -107,7 +107,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/devotees/:id', isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
       const validatedData = insertDevoteeSchema.partial().parse(req.body);
       const devotee = await storage.updateDevotee(id, validatedData);
       res.json(devotee);
@@ -119,7 +120,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/devotees/:id', isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
       const success = await storage.deleteDevotee(id);
       if (success) {
         res.status(204).send();
@@ -135,7 +137,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Devotee family members
   app.get('/api/devotees/:id/family', async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
       const devotee = await storage.getDevotee(id);
       if (!devotee || !devotee.familyId) return res.json([]);
       const members = await storage.getDevoteesByFamily(devotee.familyId);
@@ -148,7 +151,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Devotee analytics (attendance, donations, volunteering)
   app.get('/api/devotees/:id/analytics', async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
       const [attendance, donations, volunteering] = await Promise.all([
         storage.getAttendance(id),
         storage.getDonations(id),
@@ -281,7 +285,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/events/:id', isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
       const validatedData = insertEventSchema.partial().parse(req.body);
       const event = await storage.updateEvent(id, validatedData);
       res.json(event);
@@ -293,7 +298,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/events/:id', isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
       const success = await storage.deleteEvent(id);
       res.status(success ? 204 : 404).send();
     } catch (error) {
@@ -303,7 +309,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/events/:id/archive', isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
       const event = await storage.archiveEvent(id);
       res.json(event);
     } catch (error) {
@@ -313,7 +320,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/events/:id/unarchive', isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
       const event = await storage.unarchiveEvent(id);
       res.json(event);
     } catch (error) {
@@ -377,7 +385,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/groups/:id', isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
       const validatedData = insertGroupSchema.partial().parse(req.body);
       const group = await storage.updateGroup(id, validatedData);
       res.json(group);
@@ -389,7 +398,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/groups/:id', isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
       const success = await storage.deleteGroup(id);
       if (success) {
         res.status(204).send();
@@ -550,7 +560,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Extended family routes
   app.put('/api/families/:id', isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
       const validatedData = insertFamilySchema.partial().parse(req.body);
       const family = await storage.updateFamily(id, validatedData);
       res.json(family);
@@ -562,7 +573,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/families/:id', isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
       const success = await storage.deleteFamily(id);
       res.status(success ? 204 : 404).send();
     } catch (error) {
@@ -573,7 +585,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Extended mentor routes
   app.get('/api/mentors/:id', isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
       const mentor = await storage.getMentor(id);
       if (!mentor) return res.status(404).json({ message: "Mentor not found" });
       res.json(mentor);
@@ -584,7 +597,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/mentors/:id', isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
       const mentor = await storage.updateMentor(id, req.body);
       res.json(mentor);
     } catch (error) {
@@ -595,7 +609,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/mentors/:id', isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
       const success = await storage.deleteMentor(id);
       res.status(success ? 204 : 404).send();
     } catch (error) {
@@ -606,7 +621,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Extended donation routes
   app.put('/api/donations/:id', isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
       const donation = await storage.updateDonation(id, req.body);
       res.json(donation);
     } catch (error) {
@@ -617,7 +633,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/donations/:id', isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
       const success = await storage.deleteDonation(id);
       res.status(success ? 204 : 404).send();
     } catch (error) {
@@ -628,7 +645,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Extended volunteering routes
   app.put('/api/volunteering/:id', isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
       const vol = await storage.updateVolunteering(id, req.body);
       res.json(vol);
     } catch (error) {
@@ -638,7 +656,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/volunteering/:id', isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
       const success = await storage.deleteVolunteering(id);
       res.status(success ? 204 : 404).send();
     } catch (error) {
@@ -649,7 +668,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Attendance update/delete
   app.put('/api/attendance/:id', isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
       const att = await storage.updateAttendance(id, req.body);
       res.json(att);
     } catch (error) {
@@ -659,7 +679,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/attendance/:id', isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
       const success = await storage.deleteAttendance(id);
       res.status(success ? 204 : 404).send();
     } catch (error) {
@@ -671,7 +692,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/notifications', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user?.claims?.sub || 'dev-user-1';
-      const ms = (storage as any).memStore as MemoryStorage;
+      const ms = storage.memStore;
       const notifications = ms.getNotifications ? ms.getNotifications(userId) : [];
       res.json(notifications);
     } catch (error) {
@@ -682,7 +703,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/notifications', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user?.claims?.sub || 'dev-user-1';
-      const ms = (storage as any).memStore as MemoryStorage;
+      const ms = storage.memStore;
       const notification = ms.createNotification ? ms.createNotification({ ...req.body, userId }) : null;
       res.status(201).json(notification);
     } catch (error) {
@@ -692,8 +713,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/notifications/:id/read', isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
-      const ms = (storage as any).memStore as MemoryStorage;
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      const ms = storage.memStore;
       const notification = ms.markNotificationRead ? ms.markNotificationRead(id) : null;
       res.json(notification);
     } catch (error) {
@@ -704,7 +726,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/notifications/read-all', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user?.claims?.sub || 'dev-user-1';
-      const ms = (storage as any).memStore as MemoryStorage;
+      const ms = storage.memStore;
       if (ms.markAllNotificationsRead) ms.markAllNotificationsRead(userId);
       res.json({ success: true });
     } catch (error) {
@@ -714,8 +736,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/notifications/:id', isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
-      const ms = (storage as any).memStore as MemoryStorage;
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      const ms = storage.memStore;
       const success = ms.deleteNotification ? ms.deleteNotification(id) : false;
       res.status(success ? 204 : 404).send();
     } catch (error) {
@@ -725,8 +748,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/notifications/:id/pin', isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
-      const ms = (storage as any).memStore as MemoryStorage;
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      const ms = storage.memStore;
       const updated = ms.pinNotification(id);
       if (!updated) return res.status(404).json({ message: "Notification not found" });
       res.json(updated);
@@ -737,8 +761,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/notifications/:id/unpin', isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
-      const ms = (storage as any).memStore as MemoryStorage;
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      const ms = storage.memStore;
       const updated = ms.unpinNotification(id);
       if (!updated) return res.status(404).json({ message: "Notification not found" });
       res.json(updated);
@@ -750,8 +775,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Document routes — GET is authenticated; write ops require GOD Mode authorization
   app.get('/api/devotees/:id/documents', isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
-      const ms = (storage as any).memStore as MemoryStorage;
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      const ms = storage.memStore;
       const docs = ms.getDocuments(id);
       res.json(docs);
     } catch (error) {
@@ -761,12 +787,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/devotees/:id/documents', requireGodMode, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
       const { type, filename, base64 } = req.body;
       if (!type || !filename || !base64) {
         return res.status(400).json({ message: "type, filename, and base64 are required" });
       }
-      const ms = (storage as any).memStore as MemoryStorage;
+      const ms = storage.memStore;
       const doc = ms.addDocument(id, { type, filename, base64 });
       res.json(doc);
     } catch (error) {
@@ -776,9 +803,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/devotees/:id/documents/:docId', requireGodMode, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
       const { docId } = req.params;
-      const ms = (storage as any).memStore as MemoryStorage;
+      const ms = storage.memStore;
       const success = ms.deleteDocument(id, docId);
       res.status(success ? 204 : 404).send();
     } catch (error) {
@@ -789,7 +817,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Users management routes (admin/manager)
   app.get('/api/users', isAuthenticated, async (req, res) => {
     try {
-      const ms = (storage as any).memStore as MemoryStorage;
+      const ms = storage.memStore;
       const users = ms.getAllUsers ? ms.getAllUsers() : [];
       res.json(users);
     } catch (error) {
@@ -1068,8 +1096,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else {
           results.push({ step: step.label || "unknown", status: "skipped", note: "Step type not supported" });
         }
-      } catch (err: any) {
-        results.push({ step: step.label || "unknown", status: "error", error: err.message });
+      } catch (err: unknown) {
+        results.push({ step: step.label || "unknown", status: "error", error: err instanceof Error ? err.message : String(err) });
       }
     }
     macro.runCount = (macro.runCount || 0) + 1;
@@ -1113,8 +1141,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       res.json({ operation, entity, count: results.length, results });
-    } catch (err: any) {
-      res.status(400).json({ message: err.message });
+    } catch (err: unknown) {
+      res.status(400).json({ message: err instanceof Error ? err.message : String(err) });
     }
   });
 
@@ -1143,8 +1171,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader('Content-Type', 'application/json');
       res.setHeader('Content-Disposition', `attachment; filename="madhav-parivar-data-${new Date().toISOString().split('T')[0]}.json"`);
       res.json(exportData);
-    } catch (err: any) {
-      res.status(500).json({ message: err.message });
+    } catch (err: unknown) {
+      res.status(500).json({ message: err instanceof Error ? err.message : String(err) });
     }
   });
 
@@ -1171,8 +1199,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       addAudit("IMPORT_DATA", "system", null, userId, null, results);
       res.json({ message: "Data imported successfully", imported: results });
-    } catch (err: any) {
-      res.status(400).json({ message: err.message });
+    } catch (err: unknown) {
+      res.status(400).json({ message: err instanceof Error ? err.message : String(err) });
     }
   });
 
@@ -1206,8 +1234,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         res.status(400).json({ message: "Unknown entity type" });
       }
-    } catch (err: any) {
-      res.status(500).json({ message: err.message });
+    } catch (err: unknown) {
+      res.status(500).json({ message: err instanceof Error ? err.message : String(err) });
     }
   });
 
@@ -1223,15 +1251,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const after = await storage.updateDevotee(devoteeId, updates);
       addAudit("LINK", "devotee", devoteeId, userId, before, after);
       res.json(after);
-    } catch (err: any) {
-      res.status(400).json({ message: err.message });
+    } catch (err: unknown) {
+      res.status(400).json({ message: err instanceof Error ? err.message : String(err) });
     }
   });
 
   // ─── PATCH ALIASES (for all entities — fixes DataBrowser PATCH calls) ──────
   app.patch('/api/devotees/:id', isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
       const validatedData = insertDevoteeSchema.partial().parse(req.body);
       const devotee = await storage.updateDevotee(id, validatedData);
       res.json(devotee);
@@ -1239,7 +1268,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   app.patch('/api/families/:id', isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
       const validatedData = insertFamilySchema.partial().parse(req.body);
       const family = await storage.updateFamily(id, validatedData);
       res.json(family);
@@ -1247,35 +1277,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   app.patch('/api/mentors/:id', isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
       const mentor = await storage.updateMentor(id, req.body);
       res.json(mentor);
     } catch (error) { res.status(400).json({ message: "Invalid mentor data" }); }
   });
   app.patch('/api/donations/:id', isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
       const donation = await storage.updateDonation(id, req.body);
       res.json(donation);
     } catch (error) { res.status(400).json({ message: "Invalid donation data" }); }
   });
   app.patch('/api/volunteering/:id', isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
       const vol = await storage.updateVolunteering(id, req.body);
       res.json(vol);
     } catch (error) { res.status(400).json({ message: "Invalid volunteering data" }); }
   });
   app.patch('/api/attendance/:id', isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
       const att = await storage.updateAttendance(id, req.body);
       res.json(att);
     } catch (error) { res.status(400).json({ message: "Invalid attendance data" }); }
   });
   app.patch('/api/events/:id', isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
       const validatedData = insertEventSchema.partial().parse(req.body);
       const event = await storage.updateEvent(id, validatedData);
       res.json(event);
@@ -1285,7 +1320,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ─── FAMILY MEMBERS ─────────────────────────────────────────────────────────
   app.get('/api/families/:id/members', isAuthenticated, async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseIntSafe(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
       const members = await storage.getDevoteesByFamily(id);
       res.json(members);
     } catch (error) { res.status(500).json({ message: "Failed to fetch family members" }); }
@@ -1314,7 +1350,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
       }
       res.json({ entity, count: data.length, results: data.slice(0, Number(limit)) });
-    } catch (err: any) { res.status(500).json({ message: err.message }); }
+    } catch (err: unknown) { res.status(500).json({ message: err instanceof Error ? err.message : String(err) }); }
   });
 
   // ─── ADMIN: FEATURE FLAGS ───────────────────────────────────────────────────
@@ -1419,7 +1455,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(slot);
   });
   app.post('/api/admin/rollback-slots/:index/restore', isAuthenticated, requireGodMode, async (req, res) => {
-    const idx = parseInt(req.params.index);
+    const idx = parseIntSafe(req.params.index);
+    if (isNaN(idx)) return res.status(400).json({ message: "Invalid index" });
     const slot = devConfig.rollbackSlots.find((s: any) => s.index === idx);
     if (!slot) return res.status(404).json({ message: "Slot not found" });
     devConfig.visualOverrides = JSON.parse(JSON.stringify(slot.overrides));
@@ -1439,11 +1476,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         attendance: attendance.length, donations: donations.length, volunteering: volunteering.length,
         mentors: mentors.length, groups: groups.length,
       });
-    } catch (err: any) { res.status(500).json({ message: err.message }); }
+    } catch (err: unknown) { res.status(500).json({ message: err instanceof Error ? err.message : String(err) }); }
   });
   app.post('/api/admin/seed/reset', isAuthenticated, requireGodMode, async (req: any, res) => {
     try {
-      const ms = (storage as any).memStore;
+      const ms = storage.memStore;
       if (ms && ms.resetAndReseed) {
         ms.resetAndReseed();
         addAudit("SEED_RESET", "system", null, req.user?.claims?.sub || "god-mode", null, { action: "Full reset and reseed" });
@@ -1451,7 +1488,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         res.status(400).json({ message: "Reset not available (non-memory storage)" });
       }
-    } catch (err: any) { res.status(500).json({ message: err.message }); }
+    } catch (err: unknown) { res.status(500).json({ message: err instanceof Error ? err.message : String(err) }); }
   });
   app.post('/api/admin/seed/add', isAuthenticated, requireGodMode, async (req: any, res) => {
     try {
@@ -1512,7 +1549,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       res.json({ created: created.length, entity, message: `Added ${created.length} ${entity} records`, records: created });
-    } catch (err: any) { res.status(500).json({ message: err.message }); }
+    } catch (err: unknown) { res.status(500).json({ message: err instanceof Error ? err.message : String(err) }); }
   });
 
   const httpServer = createServer(app);

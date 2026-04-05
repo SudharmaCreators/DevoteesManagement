@@ -1,6 +1,5 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -10,9 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { insertGroupSchema, type InsertGroup } from "@shared/schema";
 
-const formSchema = insertGroupSchema;
-
-type FormData = z.infer<typeof formSchema>;
+type FormData = InsertGroup;
 
 interface GroupFormProps {
   onSubmit: (data: InsertGroup) => void;
@@ -23,17 +20,16 @@ interface GroupFormProps {
 
 export function GroupForm({ onSubmit, onCancel, initialData, isLoading }: GroupFormProps) {
   const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(insertGroupSchema),
     defaultValues: {
-      name: initialData?.name || "",
+      groupName: initialData?.groupName || "",
       description: initialData?.description || "",
       groupType: initialData?.groupType || "",
       location: initialData?.location || "",
-      maxMembers: initialData?.maxMembers || undefined,
+      capacity: initialData?.capacity ?? undefined,
       currentMembers: initialData?.currentMembers || 0,
       meetingSchedule: initialData?.meetingSchedule || "",
-      whatsappLink: initialData?.whatsappLink || "",
-      telegramLink: initialData?.telegramLink || "",
+      requirements: initialData?.requirements || "",
       isActive: initialData?.isActive ?? true,
     },
   });
@@ -55,7 +51,7 @@ export function GroupForm({ onSubmit, onCancel, initialData, isLoading }: GroupF
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="name"
+                name="groupName"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Group Name *</FormLabel>
@@ -102,7 +98,7 @@ export function GroupForm({ onSubmit, onCancel, initialData, isLoading }: GroupF
                   <FormItem>
                     <FormLabel>Location</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter meeting location" {...field} />
+                      <Input placeholder="Enter meeting location" {...field} value={field.value ?? ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -111,45 +107,17 @@ export function GroupForm({ onSubmit, onCancel, initialData, isLoading }: GroupF
 
               <FormField
                 control={form.control}
-                name="maxMembers"
+                name="capacity"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Maximum Members</FormLabel>
+                    <FormLabel>Maximum Capacity</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="number" 
+                      <Input
+                        type="number"
                         placeholder="Enter max members"
-                        {...field}
+                        value={field.value ?? ""}
                         onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
                       />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="whatsappLink"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>WhatsApp Group Link</FormLabel>
-                    <FormControl>
-                      <Input placeholder="https://chat.whatsapp.com/..." {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="telegramLink"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Telegram Group Link</FormLabel>
-                    <FormControl>
-                      <Input placeholder="https://t.me/..." {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -164,10 +132,11 @@ export function GroupForm({ onSubmit, onCancel, initialData, isLoading }: GroupF
                 <FormItem>
                   <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Textarea 
-                      placeholder="Describe the purpose and activities of this group" 
+                    <Textarea
+                      placeholder="Describe the purpose and activities of this group"
                       className="min-h-[100px]"
                       {...field}
+                      value={field.value ?? ""}
                     />
                   </FormControl>
                   <FormMessage />
@@ -182,10 +151,30 @@ export function GroupForm({ onSubmit, onCancel, initialData, isLoading }: GroupF
                 <FormItem>
                   <FormLabel>Meeting Schedule</FormLabel>
                   <FormControl>
-                    <Textarea 
-                      placeholder="e.g., Every Sunday 6:00 PM - 8:00 PM" 
+                    <Textarea
+                      placeholder="e.g., Every Sunday 6:00 PM - 8:00 PM"
                       className="min-h-[80px]"
                       {...field}
+                      value={field.value ?? ""}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="requirements"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Requirements / Notes</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Any requirements or notes for joining this group"
+                      className="min-h-[80px]"
+                      {...field}
+                      value={field.value ?? ""}
                     />
                   </FormControl>
                   <FormMessage />
