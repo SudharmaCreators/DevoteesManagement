@@ -62,7 +62,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updatedAt: new Date()
       };
       res.json(mockUser);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
     }
@@ -73,7 +73,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const devotees = await storage.getDevotees();
       res.json(devotees);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error fetching devotees:", error);
       res.status(500).json({ message: "Failed to fetch devotees" });
     }
@@ -82,13 +82,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/devotees/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
       const devotee = await storage.getDevotee(id);
       if (!devotee) {
         return res.status(404).json({ message: "Devotee not found" });
       }
       res.json(devotee);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error fetching devotee:", error);
       res.status(500).json({ message: "Failed to fetch devotee" });
     }
@@ -99,7 +99,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertDevoteeSchema.parse(req.body);
       const devotee = await storage.createDevotee(validatedData);
       res.status(201).json(devotee);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error creating devotee:", error);
       res.status(400).json({ message: "Invalid devotee data" });
     }
@@ -108,11 +108,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/devotees/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
       const validatedData = insertDevoteeSchema.partial().parse(req.body);
       const devotee = await storage.updateDevotee(id, validatedData);
       res.json(devotee);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error updating devotee:", error);
       res.status(400).json({ message: "Invalid devotee data" });
     }
@@ -121,14 +121,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/devotees/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
       const success = await storage.deleteDevotee(id);
       if (success) {
         res.status(204).send();
       } else {
         res.status(404).json({ message: "Devotee not found" });
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error deleting devotee:", error);
       res.status(500).json({ message: "Failed to delete devotee" });
     }
@@ -138,12 +138,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/devotees/:id/family', async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
       const devotee = await storage.getDevotee(id);
       if (!devotee || !devotee.familyId) return res.json([]);
       const members = await storage.getDevoteesByFamily(devotee.familyId);
       res.json(members.filter((m: any) => m.id !== id));
-    } catch (error) {
+    } catch (error: unknown) {
       res.status(500).json({ message: "Failed to fetch family members" });
     }
   });
@@ -152,14 +152,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/devotees/:id/analytics', async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
       const [attendance, donations, volunteering] = await Promise.all([
         storage.getAttendance(id),
         storage.getDonations(id),
         storage.getVolunteering(id),
       ]);
       res.json({ attendance, donations, volunteering });
-    } catch (error) {
+    } catch (error: unknown) {
       res.status(500).json({ message: "Failed to fetch analytics" });
     }
   });
@@ -169,7 +169,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const families = await storage.getFamilies();
       res.json(families);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error fetching families:", error);
       res.status(500).json({ message: "Failed to fetch families" });
     }
@@ -180,7 +180,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertFamilySchema.parse(req.body);
       const family = await storage.createFamily(validatedData);
       res.status(201).json(family);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error creating family:", error);
       res.status(400).json({ message: "Invalid family data" });
     }
@@ -191,7 +191,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const mentors = await storage.getMentors();
       res.json(mentors);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error fetching mentors:", error);
       res.status(500).json({ message: "Failed to fetch mentors" });
     }
@@ -202,7 +202,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertMentorSchema.parse(req.body);
       const mentor = await storage.createMentor(validatedData);
       res.status(201).json(mentor);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error creating mentor:", error);
       res.status(400).json({ message: "Invalid mentor data" });
     }
@@ -215,7 +215,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const eventId = req.query.eventId ? parseInt(req.query.eventId as string) : undefined;
       const attendance = await storage.getAttendance(devoteeId, eventId);
       res.json(attendance);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error fetching attendance:", error);
       res.status(500).json({ message: "Failed to fetch attendance" });
     }
@@ -229,7 +229,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       const attendance = await storage.createAttendance(validatedData);
       res.status(201).json(attendance);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error creating attendance:", error);
       res.status(400).json({ message: "Invalid attendance data" });
     }
@@ -241,7 +241,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const devoteeId = req.query.devoteeId ? parseInt(req.query.devoteeId as string) : undefined;
       const donations = await storage.getDonations(devoteeId);
       res.json(donations);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error fetching donations:", error);
       res.status(500).json({ message: "Failed to fetch donations" });
     }
@@ -255,7 +255,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       const donation = await storage.createDonation(validatedData);
       res.status(201).json(donation);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error creating donation:", error);
       res.status(400).json({ message: "Invalid donation data" });
     }
@@ -266,7 +266,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const events = await storage.getEvents();
       res.json(events);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error fetching events:", error);
       res.status(500).json({ message: "Failed to fetch events" });
     }
@@ -277,7 +277,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertEventSchema.parse(req.body);
       const event = await storage.createEvent(validatedData);
       res.status(201).json(event);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error creating event:", error);
       res.status(400).json({ message: "Invalid event data" });
     }
@@ -286,11 +286,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/events/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
       const validatedData = insertEventSchema.partial().parse(req.body);
       const event = await storage.updateEvent(id, validatedData);
       res.json(event);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error updating event:", error);
       res.status(400).json({ message: "Invalid event data" });
     }
@@ -299,10 +299,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/events/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
       const success = await storage.deleteEvent(id);
       res.status(success ? 204 : 404).send();
-    } catch (error) {
+    } catch (error: unknown) {
       res.status(500).json({ message: "Failed to delete event" });
     }
   });
@@ -310,10 +310,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/events/:id/archive', isAuthenticated, async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
       const event = await storage.archiveEvent(id);
       res.json(event);
-    } catch (error) {
+    } catch (error: unknown) {
       res.status(500).json({ message: "Failed to archive event" });
     }
   });
@@ -321,10 +321,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/events/:id/unarchive', isAuthenticated, async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
       const event = await storage.unarchiveEvent(id);
       res.json(event);
-    } catch (error) {
+    } catch (error: unknown) {
       res.status(500).json({ message: "Failed to unarchive event" });
     }
   });
@@ -333,7 +333,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const count = await storage.autoArchivePastEvents();
       res.json({ archived: count });
-    } catch (error) {
+    } catch (error: unknown) {
       res.status(500).json({ message: "Failed to auto-archive events" });
     }
   });
@@ -344,7 +344,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const devoteeId = req.query.devoteeId ? parseInt(req.query.devoteeId as string) : undefined;
       const volunteering = await storage.getVolunteering(devoteeId);
       res.json(volunteering);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error fetching volunteering:", error);
       res.status(500).json({ message: "Failed to fetch volunteering" });
     }
@@ -355,7 +355,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertVolunteeringSchema.parse(req.body);
       const volunteering = await storage.createVolunteering(validatedData);
       res.status(201).json(volunteering);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error creating volunteering:", error);
       res.status(400).json({ message: "Invalid volunteering data" });
     }
@@ -366,7 +366,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const groups = await storage.getGroups();
       res.json(groups);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error fetching groups:", error);
       res.status(500).json({ message: "Failed to fetch groups" });
     }
@@ -377,7 +377,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertGroupSchema.parse(req.body);
       const group = await storage.createGroup(validatedData);
       res.status(201).json(group);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error creating group:", error);
       res.status(400).json({ message: "Invalid group data" });
     }
@@ -386,11 +386,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/groups/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
       const validatedData = insertGroupSchema.partial().parse(req.body);
       const group = await storage.updateGroup(id, validatedData);
       res.json(group);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error updating group:", error);
       res.status(400).json({ message: "Invalid group data" });
     }
@@ -399,14 +399,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/groups/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
       const success = await storage.deleteGroup(id);
       if (success) {
         res.status(204).send();
       } else {
         res.status(404).json({ message: "Group not found" });
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error deleting group:", error);
       res.status(500).json({ message: "Failed to delete group" });
     }
@@ -418,7 +418,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const groupId = req.query.groupId ? parseInt(req.query.groupId as string) : undefined;
       const entries = await storage.getGroupEntries(groupId);
       res.json(entries);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error fetching group entries:", error);
       res.status(500).json({ message: "Failed to fetch group entries" });
     }
@@ -429,7 +429,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertGroupEntrySchema.parse(req.body);
       const entry = await storage.createGroupEntry(validatedData);
       res.status(201).json(entry);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error creating group entry:", error);
       res.status(400).json({ message: "Invalid group entry data" });
     }
@@ -440,7 +440,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const mandals = await storage.getMandals();
       res.json(mandals);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error fetching mandals:", error);
       res.status(500).json({ message: "Failed to fetch mandals" });
     }
@@ -451,7 +451,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertMandalSchema.parse(req.body);
       const mandal = await storage.createMandal(validatedData);
       res.status(201).json(mandal);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error creating mandal:", error);
       res.status(400).json({ message: "Invalid mandal data" });
     }
@@ -462,7 +462,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const locations = await storage.getSabhaLocations();
       res.json(locations);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error fetching sabha locations:", error);
       res.status(500).json({ message: "Failed to fetch sabha locations" });
     }
@@ -473,7 +473,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertSabhaLocationSchema.parse(req.body);
       const location = await storage.createSabhaLocation(validatedData);
       res.status(201).json(location);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error creating sabha location:", error);
       res.status(400).json({ message: "Invalid sabha location data" });
     }
@@ -485,7 +485,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const layouts = await storage.getDashboardLayouts(userId);
       res.json(layouts);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error fetching dashboard layouts:", error);
       res.status(500).json({ message: "Failed to fetch dashboard layouts" });
     }
@@ -499,7 +499,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       const layout = await storage.createDashboardLayout(validatedData);
       res.status(201).json(layout);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error creating dashboard layout:", error);
       res.status(400).json({ message: "Invalid dashboard layout data" });
     }
@@ -511,7 +511,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const preferences = await storage.getUserPreferences(userId);
       res.json(preferences);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error fetching user preferences:", error);
       res.status(500).json({ message: "Failed to fetch user preferences" });
     }
@@ -525,7 +525,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       const preferences = await storage.upsertUserPreferences(validatedData);
       res.json(preferences);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error updating user preferences:", error);
       res.status(400).json({ message: "Invalid user preferences data" });
     }
@@ -536,7 +536,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const stats = await storage.getStats();
       res.json(stats);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error fetching stats:", error);
       res.status(500).json({ message: "Failed to fetch stats" });
     }
@@ -551,7 +551,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storage.getVolunteeringStats(),
       ]);
       res.json({ stats, donationTrends, attendanceTrends, volunteeringStats });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error fetching analytics:", error);
       res.status(500).json({ message: "Failed to fetch analytics" });
     }
@@ -561,11 +561,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/families/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
       const validatedData = insertFamilySchema.partial().parse(req.body);
       const family = await storage.updateFamily(id, validatedData);
       res.json(family);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error updating family:", error);
       res.status(400).json({ message: "Failed to update family" });
     }
@@ -574,10 +574,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/families/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
       const success = await storage.deleteFamily(id);
       res.status(success ? 204 : 404).send();
-    } catch (error) {
+    } catch (error: unknown) {
       res.status(500).json({ message: "Failed to delete family" });
     }
   });
@@ -586,11 +586,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/mentors/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
       const mentor = await storage.getMentor(id);
       if (!mentor) return res.status(404).json({ message: "Mentor not found" });
       res.json(mentor);
-    } catch (error) {
+    } catch (error: unknown) {
       res.status(500).json({ message: "Failed to fetch mentor" });
     }
   });
@@ -598,10 +598,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/mentors/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
       const mentor = await storage.updateMentor(id, req.body);
       res.json(mentor);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error updating mentor:", error);
       res.status(400).json({ message: "Failed to update mentor" });
     }
@@ -610,10 +610,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/mentors/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
       const success = await storage.deleteMentor(id);
       res.status(success ? 204 : 404).send();
-    } catch (error) {
+    } catch (error: unknown) {
       res.status(500).json({ message: "Failed to delete mentor" });
     }
   });
@@ -622,10 +622,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/donations/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
       const donation = await storage.updateDonation(id, req.body);
       res.json(donation);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error updating donation:", error);
       res.status(400).json({ message: "Failed to update donation" });
     }
@@ -634,10 +634,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/donations/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
       const success = await storage.deleteDonation(id);
       res.status(success ? 204 : 404).send();
-    } catch (error) {
+    } catch (error: unknown) {
       res.status(500).json({ message: "Failed to delete donation" });
     }
   });
@@ -646,10 +646,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/volunteering/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
       const vol = await storage.updateVolunteering(id, req.body);
       res.json(vol);
-    } catch (error) {
+    } catch (error: unknown) {
       res.status(400).json({ message: "Failed to update volunteering record" });
     }
   });
@@ -657,10 +657,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/volunteering/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
       const success = await storage.deleteVolunteering(id);
       res.status(success ? 204 : 404).send();
-    } catch (error) {
+    } catch (error: unknown) {
       res.status(500).json({ message: "Failed to delete volunteering record" });
     }
   });
@@ -669,10 +669,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/attendance/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
       const att = await storage.updateAttendance(id, req.body);
       res.json(att);
-    } catch (error) {
+    } catch (error: unknown) {
       res.status(400).json({ message: "Failed to update attendance" });
     }
   });
@@ -680,10 +680,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/attendance/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
       const success = await storage.deleteAttendance(id);
       res.status(success ? 204 : 404).send();
-    } catch (error) {
+    } catch (error: unknown) {
       res.status(500).json({ message: "Failed to delete attendance" });
     }
   });
@@ -820,13 +820,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = req.params.id;
       const user = await storage.upsertUser({ id, ...req.body });
       res.json(user);
-    } catch (error) {
+    } catch (error: unknown) {
       res.status(400).json({ message: "Failed to update user" });
     }
   });
 
   // Dev mode config (store/retrieve application config)
-  const devConfig: Record<string, any> = {
+  // Default values — overridden at startup by persisted DB values
+  const devConfigDefaults: Record<string, any> = {
     appInfo: {
       name: "Madhav Parivar",
       subtitle: "Devotional Community Management",
@@ -923,6 +924,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     rollbackNextIndex: 0,
   };
 
+  // Load persisted devConfig from DB, merging over defaults
+  const devConfig: Record<string, any> = { ...devConfigDefaults };
+  try {
+    const persisted = await storage.getSystemConfig("devConfig");
+    if (persisted && typeof persisted === "object") {
+      Object.assign(devConfig, persisted);
+    }
+  } catch (err: unknown) {
+    console.warn("Could not load devConfig from DB, using defaults:", err instanceof Error ? err.message : String(err));
+  }
+
+  const saveDevConfig = () => {
+    storage.setSystemConfig("devConfig", devConfig).catch((err: unknown) => {
+      console.error("Failed to persist devConfig:", err instanceof Error ? err.message : String(err));
+    });
+  };
+
   // ─── GOD MODE SESSION ACTIVATION ────────────────────────────────────────────
   app.post('/api/admin/activate', isAuthenticated, async (req, res) => {
     const { password } = req.body;
@@ -946,31 +964,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/dev-config', isAuthenticated, async (req, res) => {
     Object.assign(devConfig, req.body);
+    saveDevConfig();
     res.json(devConfig);
   });
 
   app.patch('/api/dev-config/app-info', isAuthenticated, async (req, res) => {
     devConfig.appInfo = { ...devConfig.appInfo, ...req.body };
+    saveDevConfig();
     res.json(devConfig.appInfo);
   });
 
   app.patch('/api/dev-config/navigation', isAuthenticated, async (req, res) => {
     devConfig.navigation = { ...devConfig.navigation, ...req.body };
+    saveDevConfig();
     res.json(devConfig.navigation);
   });
 
   app.patch('/api/dev-config/theme', isAuthenticated, async (req, res) => {
     devConfig.theme = { ...devConfig.theme, ...req.body };
+    saveDevConfig();
     res.json(devConfig.theme);
   });
 
   app.patch('/api/dev-config/custom-fields', isAuthenticated, async (req, res) => {
     devConfig.customFields = req.body.fields;
+    saveDevConfig();
     res.json(devConfig.customFields);
   });
 
   app.patch('/api/dev-config/role-profiles', isAuthenticated, async (req, res) => {
     devConfig.roleProfiles = { ...devConfig.roleProfiles, ...req.body };
+    saveDevConfig();
     res.json(devConfig.roleProfiles);
   });
 
@@ -984,6 +1008,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     };
     devConfig.snapshots.unshift(snapshot);
     if (devConfig.snapshots.length > 10) devConfig.snapshots.pop();
+    saveDevConfig();
     res.json(snapshot);
   });
 
@@ -991,6 +1016,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const snap = devConfig.snapshots.find((s: any) => s.id === req.params.snapshotId);
     if (!snap) return res.status(404).json({ message: "Snapshot not found" });
     Object.assign(devConfig, snap.config);
+    saveDevConfig();
     res.json({ message: "Restored", config: snap.config });
   });
 
@@ -1017,6 +1043,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (theme) devConfig.theme = theme;
       if (customFields) devConfig.customFields = customFields;
       if (roleProfiles) devConfig.roleProfiles = roleProfiles;
+      saveDevConfig();
       res.json({ message: "Config imported successfully", config: devConfig });
     } catch (e) {
       res.status(400).json({ message: "Invalid config format" });
@@ -1261,71 +1288,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/devotees/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
       const validatedData = insertDevoteeSchema.partial().parse(req.body);
       const devotee = await storage.updateDevotee(id, validatedData);
       res.json(devotee);
-    } catch (error) { res.status(400).json({ message: "Invalid devotee data" }); }
+    } catch (error: unknown) { res.status(400).json({ message: "Invalid devotee data" }); }
   });
   app.patch('/api/families/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
       const validatedData = insertFamilySchema.partial().parse(req.body);
       const family = await storage.updateFamily(id, validatedData);
       res.json(family);
-    } catch (error) { res.status(400).json({ message: "Invalid family data" }); }
+    } catch (error: unknown) { res.status(400).json({ message: "Invalid family data" }); }
   });
   app.patch('/api/mentors/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
       const mentor = await storage.updateMentor(id, req.body);
       res.json(mentor);
-    } catch (error) { res.status(400).json({ message: "Invalid mentor data" }); }
+    } catch (error: unknown) { res.status(400).json({ message: "Invalid mentor data" }); }
   });
   app.patch('/api/donations/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
       const donation = await storage.updateDonation(id, req.body);
       res.json(donation);
-    } catch (error) { res.status(400).json({ message: "Invalid donation data" }); }
+    } catch (error: unknown) { res.status(400).json({ message: "Invalid donation data" }); }
   });
   app.patch('/api/volunteering/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
       const vol = await storage.updateVolunteering(id, req.body);
       res.json(vol);
-    } catch (error) { res.status(400).json({ message: "Invalid volunteering data" }); }
+    } catch (error: unknown) { res.status(400).json({ message: "Invalid volunteering data" }); }
   });
   app.patch('/api/attendance/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
       const att = await storage.updateAttendance(id, req.body);
       res.json(att);
-    } catch (error) { res.status(400).json({ message: "Invalid attendance data" }); }
+    } catch (error: unknown) { res.status(400).json({ message: "Invalid attendance data" }); }
   });
   app.patch('/api/events/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
       const validatedData = insertEventSchema.partial().parse(req.body);
       const event = await storage.updateEvent(id, validatedData);
       res.json(event);
-    } catch (error) { res.status(400).json({ message: "Invalid event data" }); }
+    } catch (error: unknown) { res.status(400).json({ message: "Invalid event data" }); }
   });
 
   // ─── FAMILY MEMBERS ─────────────────────────────────────────────────────────
   app.get('/api/families/:id/members', isAuthenticated, async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
       const members = await storage.getDevoteesByFamily(id);
       res.json(members);
-    } catch (error) { res.status(500).json({ message: "Failed to fetch family members" }); }
+    } catch (error: unknown) { res.status(500).json({ message: "Failed to fetch family members" }); }
   });
 
   // ─── ADMIN: QUERY CONSOLE ───────────────────────────────────────────────────
@@ -1365,6 +1392,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         (devConfig.featureFlags as any)[key] = req.body[key];
       }
     }
+    saveDevConfig();
     res.json(devConfig.featureFlags);
   });
 
@@ -1374,6 +1402,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   app.patch('/api/admin/receipt-template', isAuthenticated, requireGodMode, async (req, res) => {
     devConfig.receiptTemplate = { ...devConfig.receiptTemplate, ...req.body };
+    saveDevConfig();
     res.json(devConfig.receiptTemplate);
   });
 
@@ -1384,16 +1413,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/admin/analytics-dashboards', isAuthenticated, requireGodMode, async (req, res) => {
     const dashboard = { ...req.body, id: `dash_${Date.now()}` };
     devConfig.analyticsDashboards.push(dashboard);
+    saveDevConfig();
     res.json(dashboard);
   });
   app.put('/api/admin/analytics-dashboards/:id', isAuthenticated, requireGodMode, async (req, res) => {
     const idx = devConfig.analyticsDashboards.findIndex((d: any) => d.id === req.params.id);
     if (idx === -1) return res.status(404).json({ message: 'Dashboard not found' });
     devConfig.analyticsDashboards[idx] = { ...devConfig.analyticsDashboards[idx], ...req.body };
+    saveDevConfig();
     res.json(devConfig.analyticsDashboards[idx]);
   });
   app.delete('/api/admin/analytics-dashboards/:id', isAuthenticated, requireGodMode, async (req, res) => {
     devConfig.analyticsDashboards = devConfig.analyticsDashboards.filter((d: any) => d.id !== req.params.id);
+    saveDevConfig();
     res.json({ deleted: true });
   });
 
@@ -1404,16 +1436,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/admin/card-themes', isAuthenticated, requireGodMode, async (req, res) => {
     const theme = { ...req.body, id: `theme_${Date.now()}` };
     devConfig.cardThemes.push(theme);
+    saveDevConfig();
     res.json(theme);
   });
   app.put('/api/admin/card-themes/:id', isAuthenticated, requireGodMode, async (req, res) => {
     const idx = devConfig.cardThemes.findIndex((t: any) => t.id === req.params.id);
     if (idx === -1) return res.status(404).json({ message: 'Theme not found' });
     devConfig.cardThemes[idx] = { ...devConfig.cardThemes[idx], ...req.body };
+    saveDevConfig();
     res.json(devConfig.cardThemes[idx]);
   });
   app.delete('/api/admin/card-themes/:id', isAuthenticated, requireGodMode, async (req, res) => {
     devConfig.cardThemes = devConfig.cardThemes.filter((t: any) => t.id !== req.params.id);
+    saveDevConfig();
     res.json({ deleted: true });
   });
 
@@ -1423,10 +1458,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   app.patch('/api/admin/visual-overrides', isAuthenticated, requireGodMode, async (req, res) => {
     Object.assign(devConfig.visualOverrides, req.body);
+    saveDevConfig();
     res.json(devConfig.visualOverrides);
   });
   app.delete('/api/admin/visual-overrides', isAuthenticated, requireGodMode, async (_req, res) => {
     devConfig.visualOverrides = {};
+    saveDevConfig();
     res.json({ cleared: true });
   });
 
@@ -1453,14 +1490,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       devConfig.rollbackSlots.push(slot);
     }
     devConfig.rollbackNextIndex = (devConfig.rollbackNextIndex + 1);
+    saveDevConfig();
     res.json(slot);
   });
   app.post('/api/admin/rollback-slots/:index/restore', isAuthenticated, requireGodMode, async (req, res) => {
     const idx = parseIntSafe(req.params.index);
-    if (isNaN(idx)) return res.status(400).json({ message: "Invalid index" });
+    if (idx === null) return res.status(400).json({ message: "Invalid index" });
     const slot = devConfig.rollbackSlots.find((s: any) => s.index === idx);
     if (!slot) return res.status(404).json({ message: "Slot not found" });
     devConfig.visualOverrides = JSON.parse(JSON.stringify(slot.overrides));
+    saveDevConfig();
     res.json({ restored: true, slot, overrides: devConfig.visualOverrides });
   });
 

@@ -559,6 +559,13 @@ export const auditLogs = pgTable("audit_logs", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// ─── System Config table (persisted dev/app config) ───────────────────────────
+export const systemConfig = pgTable("system_config", {
+  key: varchar("key").primaryKey().notNull(),
+  value: jsonb("value").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true });
 export const insertDevoteeDocumentSchema = createInsertSchema(devoteeDocuments).omit({ uploadedAt: true });
 export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: true, createdAt: true });
@@ -569,3 +576,4 @@ export type DevoteeDocument = typeof devoteeDocuments.$inferSelect;
 export type InsertDevoteeDocument = z.infer<typeof insertDevoteeDocumentSchema>;
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+export type SystemConfig = typeof systemConfig.$inferSelect;

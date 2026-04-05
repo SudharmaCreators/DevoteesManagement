@@ -189,6 +189,12 @@ Changelog:
   - Dashboard group actions: replaced console.log/alert with toast notifications and real Bulk Message dialog
   - Privacy verified: Dashboard shows only aggregate stats, no individual devotee profiles
   - All 8 themes verified: devotional, matrix, ironman, ocean, forest, royal, sunset, midnight
+- April 05, 2026. Production hardening & tooling:
+  - system_config table added to schema (key/value JSON persistence for devConfig)
+  - devConfig now loaded from PostgreSQL on startup and persisted on every mutation (app info, navigation, theme, custom fields, role profiles, feature flags, receipt template, analytics dashboards, card themes, visual overrides, rollback slots, snapshots)
+  - IStorage interface extended with getSystemConfig/setSystemConfig; DatabaseStorage, MemoryStorage, and FallbackStorage all implement them
+  - ESLint 9 (flat config) + Prettier configured: eslint.config.js, .prettierrc, .prettierignore added
+  - npm scripts: lint (eslint) and format (prettier --write) added to package.json
 ```
 
 ## User Preferences

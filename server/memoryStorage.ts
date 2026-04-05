@@ -1010,6 +1010,16 @@ export class MemoryStorage implements IStorage {
     return this.auditLogStore.slice(0, limit);
   }
 
+  private systemConfigStore = new Map<string, unknown>();
+
+  async getSystemConfig(key: string): Promise<unknown | null> {
+    return this.systemConfigStore.get(key) ?? null;
+  }
+
+  async setSystemConfig(key: string, value: unknown): Promise<void> {
+    this.systemConfigStore.set(key, value);
+  }
+
   // User listing (for admin/manager views)
   getAllUsers(): User[] {
     return Array.from(this.users.values());

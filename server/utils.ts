@@ -1,11 +1,11 @@
 /**
  * Parse an integer from a route param safely.
- * Returns NaN if the value is not a valid integer — callers must check.
+ * Returns null if the value is not a valid integer — callers must check for null.
  */
-export function parseIntSafe(value: string | undefined): number {
-  if (!value) return NaN;
+export function parseIntSafe(value: string | undefined): number | null {
+  if (!value) return null;
   const n = parseInt(value, 10);
-  return isNaN(n) ? NaN : n;
+  return isNaN(n) ? null : n;
 }
 
 /**

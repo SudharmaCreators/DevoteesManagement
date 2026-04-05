@@ -412,13 +412,22 @@ export default function Donations() {
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setReceiptDonation(null)}>Close</Button>
               <Button
-                onClick={() => window.print()}
+                onClick={() => {
+                  const el = document.getElementById("donation-receipt-print-root");
+                  if (!el) return;
+                  const printWin = window.open("", "_blank", "width=700,height=900");
+                  if (!printWin) return;
+                  printWin.document.write(`<!DOCTYPE html><html><head><title>Donation Receipt</title><style>body{font-family:sans-serif;margin:0;padding:20px;} * { box-sizing: border-box; }</style></head><body>${el.innerHTML}</body></html>`);
+                  printWin.document.close();
+                  printWin.focus();
+                  printWin.print();
+                  printWin.close();
+                }}
                 className="bg-primary text-primary-foreground"
               >
                 <Printer className="w-4 h-4 mr-2" /> Print Receipt
               </Button>
             </div>
-            <style>{`@media print { body > *:not(#donation-receipt-print-root) { display: none !important; } #donation-receipt-print-root { display: block !important; } }`}</style>
           </DialogContent>
         </Dialog>
       )}

@@ -18,6 +18,7 @@ import {
   notifications,
   devoteeDocuments,
   auditLogs,
+  systemConfig,
   type User,
   type UpsertUser,
   type Devotee,
@@ -141,6 +142,9 @@ export interface IStorage {
 
   createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
   getAuditLogs(limit?: number): Promise<AuditLog[]>;
+
+  getSystemConfig(key: string): Promise<unknown | null>;
+  setSystemConfig(key: string, value: unknown): Promise<void>;
 
   getStats(): Promise<{
     totalDevotees: number;
@@ -606,6 +610,21 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt)).limit(limit);
   }
 
+  async getSystemConfig(key: string): Promise<unknown | null> {
+    const [row] = await db.select().from(systemConfig).where(eq(systemConfig.key, key));
+    return row ? row.value : null;
+  }
+
+  async setSystemConfig(key: string, value: unknown): Promise<void> {
+    await db
+      .insert(systemConfig)
+      .values({ key, value: value as Record<string, unknown>, updatedAt: new Date() })
+      .onConflictDoUpdate({
+        target: systemConfig.key,
+        set: { value: value as Record<string, unknown>, updatedAt: new Date() },
+      });
+  }
+
   async getDonationTrends(): Promise<Array<{ month: string; amount: number }>> {
     const rows = await db.execute(sql`
       SELECT
@@ -774,6 +793,9 @@ class FallbackStorage implements IStorage {
 
   async createAuditLog(log: InsertAuditLog) { return this.executeWithFallback(s => s.createAuditLog(log)); }
   async getAuditLogs(limit?: number) { return this.executeWithFallback(s => s.getAuditLogs(limit)); }
+
+  async getSystemConfig(key: string) { return this.executeWithFallback(s => s.getSystemConfig(key)); }
+  async setSystemConfig(key: string, value: unknown) { return this.executeWithFallback(s => s.setSystemConfig(key, value)); }
 
   async getStats() { return this.executeWithFallback(s => s.getStats()); }
   async getDonationTrends() { return this.executeWithFallback(s => s.getDonationTrends()); }
