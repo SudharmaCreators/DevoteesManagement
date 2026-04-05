@@ -1,19 +1,13 @@
 
 import { storage } from "./storage";
 import { db } from "./db";
-import { devotees, families, mentors, events, attendance, donations, eventParticipation, volunteering, groupMemberships, groupEntries, mandals, sabhaLocations, groups } from "@shared/schema";
-import { count } from "drizzle-orm";
-
-async function getCount(table: any): Promise<number> {
-  const [result] = await db.select({ cnt: count() }).from(table);
-  return Number(result?.cnt ?? 0);
-}
+import { eventParticipation, groupMemberships } from "@shared/schema";
 
 export async function seedDemoData() {
   try {
     // ── 1. Mandals (reference data) ───────────────────────────────────────────
-    const mandalCount = await getCount(mandals);
-    if (mandalCount === 0) {
+    const existingMandals = await storage.getMandals();
+    if (existingMandals.length === 0) {
       const mandalData = [
         { name: "Shri Ayodhya Mandal", hindiName: "श्री अयोध्या मंडल", code: "AY" },
         { name: "Shri Dwarkadhish Mandal", hindiName: "श्री द्वारकाधीश मंडल", code: "DW" },
@@ -37,8 +31,8 @@ export async function seedDemoData() {
     }
 
     // ── 2. Sabha Locations (reference data) ───────────────────────────────────
-    const sabhaCount = await getCount(sabhaLocations);
-    if (sabhaCount === 0) {
+    const existingLocations = await storage.getSabhaLocations();
+    if (existingLocations.length === 0) {
       const locationData = [
         { name: "Mumbai Central Sabha", address: "Mumbai Central, Maharashtra", city: "Mumbai", state: "Maharashtra" },
         { name: "Delhi Satsang Bhawan", address: "Karol Bagh, New Delhi", city: "Delhi", state: "Delhi" },
@@ -57,8 +51,8 @@ export async function seedDemoData() {
     }
 
     // ── 3. Groups ─────────────────────────────────────────────────────────────
-    const groupCount = await getCount(groups);
-    if (groupCount === 0) {
+    const existingGroups = await storage.getGroups();
+    if (existingGroups.length === 0) {
       const defaultGroups = [
         {
           groupName: "Families",
@@ -120,8 +114,8 @@ export async function seedDemoData() {
     }
 
     // ── 4. Families (50) ──────────────────────────────────────────────────────
-    const familyCount = await getCount(families);
-    if (familyCount === 0) {
+    const existingFamilies = await storage.getFamilies();
+    if (existingFamilies.length === 0) {
       const familyData = [
         { familyName: "Sharma Family", city: "Mumbai", state: "Maharashtra", phone: "9876541001", email: "sharma.family@email.com", totalMembers: 4, address: "A-12, Sector 7, Mumbai" },
         { familyName: "Gupta Family", city: "Delhi", state: "Delhi", phone: "9876541002", email: "gupta.family@email.com", totalMembers: 5, address: "B-34, Lajpat Nagar, Delhi" },
@@ -180,10 +174,10 @@ export async function seedDemoData() {
     }
 
     // ── 5. Devotees (50) ──────────────────────────────────────────────────────
-    const devoteeCount = await getCount(devotees);
-    const createdDevoteeIds: number[] = [];
+    const existingDevotees = await storage.getDevotees();
+    const createdDevoteeIds: number[] = existingDevotees.map(d => d.id);
 
-    if (devoteeCount === 0) {
+    if (existingDevotees.length === 0) {
       const currentFamilies = await storage.getFamilies();
       const cities = ["Mumbai", "Delhi", "Bangalore", "Pune", "Hyderabad", "Chennai", "Kolkata", "Ahmedabad", "Jaipur", "Lucknow"];
       const states = ["Maharashtra", "Delhi", "Karnataka", "Maharashtra", "Telangana", "Tamil Nadu", "West Bengal", "Gujarat", "Rajasthan", "Uttar Pradesh"];
@@ -250,7 +244,7 @@ export async function seedDemoData() {
         const cityIdx = i % cities.length;
         const joinDate = new Date(baseJoinDate);
         joinDate.setMonth(joinDate.getMonth() + Math.floor(i * 0.8));
-        const dob = new Date("1970-01-01");
+        const dob = new Date("1960-01-01");
         dob.setFullYear(1960 + (i % 35));
         dob.setMonth(i % 12);
 
@@ -281,16 +275,13 @@ export async function seedDemoData() {
         });
         createdDevoteeIds.push(created.id);
       }
-    } else {
-      const existing = await storage.getDevotees();
-      existing.forEach(d => createdDevoteeIds.push(d.id));
     }
 
     // ── 6. Mentors (10) ───────────────────────────────────────────────────────
-    const mentorCount = await getCount(mentors);
-    const createdMentorIds: number[] = [];
+    const existingMentors = await storage.getMentors();
+    const createdMentorIds: number[] = existingMentors.map(m => m.id);
 
-    if (mentorCount === 0 && createdDevoteeIds.length >= 10) {
+    if (existingMentors.length === 0 && createdDevoteeIds.length >= 10) {
       const specializations = [
         "Bhagavad Gita Studies", "Vedic Mathematics", "Yoga & Meditation",
         "Sanskrit Literature", "Spiritual Counseling", "Devotional Music",
@@ -313,22 +304,20 @@ export async function seedDemoData() {
         createdMentorIds.push(created.id);
       }
 
-      // Assign mentors back to devotees (devotees 10-49 get a mentor)
+      // Assign mentors to devotees 10-49
       for (let i = 10; i < createdDevoteeIds.length; i++) {
         await storage.updateDevotee(createdDevoteeIds[i], {
           mentorId: createdMentorIds[i % createdMentorIds.length],
         });
       }
-    } else if (mentorCount > 0) {
-      const existing = await storage.getMentors();
-      existing.forEach(m => createdMentorIds.push(m.id));
     }
 
-    // ── 7. Events (50) ────────────────────────────────────────────────────────
-    const eventCount = await getCount(events);
-    const createdEventIds: number[] = [];
+    // ── 7. Events (50) — ~17 past, ~8 ongoing, ~25 future ────────────────────
+    const existingEvents = await storage.getEvents();
+    const createdEventIds: number[] = existingEvents.map(e => e.id);
 
-    if (eventCount === 0) {
+    if (existingEvents.length === 0) {
+      const now = new Date();
       const eventTypes = ["satsang", "festival", "seva", "workshop", "retreat", "celebration", "youth", "kirtan"];
       const locations = [
         "Mumbai Central Sabha", "Delhi Satsang Bhawan", "Bangalore Ashram",
@@ -336,46 +325,70 @@ export async function seedDemoData() {
         "Kolkata Satsang Hall", "Jaipur Ashram", "Haridwar Ashram", "Vrindavan Temple",
       ];
       const eventTitles = [
-        "Shrimad Bhagwat Katha", "Janmashtami Celebration", "Ram Navami Festival",
-        "Holi Celebration", "Diwali Puja", "Navratri Garba Night", "Guru Purnima Satsang",
+        // 17 past events (indices 0-16)
+        "Shrimad Bhagwat Katha", "Janmashtami Celebration 2025", "Ram Navami Festival",
+        "Holi Celebration", "Diwali Puja 2025", "Navratri Garba Night", "Guru Purnima Satsang",
         "Ekadashi Fasting Day", "Shravan Maas Seva", "Kartik Deepotsav",
         "Yoga & Meditation Retreat", "Bhagavad Gita Workshop", "Vedic Chanting Session",
-        "Youth Leadership Summit", "Women's Seva Circle", "Senior Citizens Satsang",
-        "Children's Spiritual Camp", "Annual Family Gathering", "Founder's Day",
-        "New Year Puja", "Makar Sankranti Celebration", "Vasant Panchami Festival",
-        "Maha Shivratri Night", "Chaitra Navratri", "Akshaya Tritiya Puja",
-        "Hanuman Jayanti", "Buddha Purnima", "Ganesh Chaturthi", "Pitru Paksha Puja",
-        "Sharad Navratri", "Kojagiri Purnima", "Tulsi Vivah", "Gita Jayanti",
-        "Winter Solstice Satsang", "Makar Sankranti Kite Festival", "Spring Retreat",
+        "Youth Leadership Summit 2025", "Women's Seva Circle", "Senior Citizens Satsang",
+        "Children's Spiritual Camp",
+        // 8 ongoing events (indices 17-24)
+        "Annual Family Gathering", "Founder's Week Celebration", "Chaitra Navratri",
+        "Makar Sankranti Celebration", "Vasant Panchami Festival", "Spring Retreat",
+        "Monthly Kirtan Marathon", "Bhajan Sandhya Week",
+        // 25 future events (indices 25-49)
+        "New Year Puja 2027", "Maha Shivratri Night", "Akshaya Tritiya Puja",
+        "Hanuman Jayanti", "Buddha Purnima", "Ganesh Chaturthi 2026",
+        "Pitru Paksha Puja", "Sharad Navratri", "Kojagiri Purnima",
+        "Tulsi Vivah", "Gita Jayanti", "Winter Solstice Satsang",
         "Summer Youth Camp", "Monsoon Satsang", "Autumn Harvest Celebration",
-        "Monthly Kirtan Night", "Bhajan Sandhya", "Vishnu Sahasranama Parayana",
-        "Durga Saptashati Parayana", "Ramcharitmanas Path", "Sundarkand Parayana",
+        "Vishnu Sahasranama Parayana", "Durga Saptashati Parayana",
+        "Ramcharitmanas Path", "Sundarkand Parayana",
         "Seva Day at Old Age Home", "Blood Donation Camp", "Free Medical Camp",
-        "Annadanam Seva", "Environment Awareness Walk",
+        "Annadanam Seva", "Environment Awareness Walk", "Janmashtami 2026",
       ];
-      const statuses = ["completed", "completed", "completed", "active", "active", "planned", "planned", "planned"];
 
-      const baseDate = new Date("2024-01-01");
       for (let i = 0; i < 50; i++) {
-        const startDate = new Date(baseDate);
-        startDate.setDate(startDate.getDate() + i * 7);
-        const endDate = new Date(startDate);
-        endDate.setDate(endDate.getDate() + 1);
-        const isPast = startDate < new Date();
+        let startDate: Date;
+        let endDate: Date;
+        let status: string;
+
+        if (i < 17) {
+          // Past: 1 month to 18 months ago
+          startDate = new Date(now);
+          startDate.setDate(now.getDate() - 30 - i * 10);
+          endDate = new Date(startDate);
+          endDate.setDate(startDate.getDate() + 1);
+          status = "completed";
+        } else if (i < 25) {
+          // Ongoing: started a few days ago, ends a few days from now
+          startDate = new Date(now);
+          startDate.setDate(now.getDate() - (i - 17) - 1);
+          endDate = new Date(now);
+          endDate.setDate(now.getDate() + (i - 17) + 2);
+          status = "active";
+        } else {
+          // Future: 1 week to 12 months from now
+          startDate = new Date(now);
+          startDate.setDate(now.getDate() + 7 + (i - 25) * 10);
+          endDate = new Date(startDate);
+          endDate.setDate(startDate.getDate() + 1);
+          status = "planned";
+        }
 
         const created = await storage.createEvent({
           title: eventTitles[i],
           description: `A sacred ${eventTypes[i % eventTypes.length]} event for the community. All devotees are welcome to participate and receive blessings.`,
           eventType: eventTypes[i % eventTypes.length],
           location: locations[i % locations.length],
-          startDate: startDate,
-          endDate: endDate,
+          startDate,
+          endDate,
           startTime: ["06:00", "08:00", "10:00", "16:00", "18:00", "19:00"][i % 6],
           endTime: ["08:00", "10:00", "12:00", "18:00", "20:00", "21:00"][i % 6],
           capacity: 50 + (i % 10) * 10,
           registrationRequired: i % 3 === 0,
           cost: i % 4 === 0 ? "0" : String(100 + (i % 5) * 50),
-          status: isPast ? statuses[i % 4] : statuses[4 + (i % 4)],
+          status,
           maxParticipants: 50 + (i % 10) * 10,
           createdBy: "admin",
           isActive: true,
@@ -383,21 +396,20 @@ export async function seedDemoData() {
         });
         createdEventIds.push(created.id);
       }
-    } else {
-      const existing = await storage.getEvents();
-      existing.forEach(e => createdEventIds.push(e.id));
     }
 
     // ── 8. Attendance (50) ────────────────────────────────────────────────────
-    const attendanceCount = await getCount(attendance);
-    if (attendanceCount === 0 && createdDevoteeIds.length > 0 && createdEventIds.length > 0) {
+    const existingAttendance = await storage.getAttendance();
+    if (existingAttendance.length === 0 && createdDevoteeIds.length > 0 && createdEventIds.length > 0) {
+      const now = new Date();
       const statuses = ["present", "present", "present", "absent", "late"];
       for (let i = 0; i < 50; i++) {
-        const attDate = new Date("2024-06-01");
-        attDate.setDate(attDate.getDate() + Math.floor(i * 3.5));
+        // Spread across past 6 months so trend charts show data
+        const attDate = new Date(now);
+        attDate.setDate(now.getDate() - Math.floor(i * 3.5));
         await storage.createAttendance({
           devoteeId: createdDevoteeIds[i % createdDevoteeIds.length],
-          eventId: createdEventIds[i % createdEventIds.length],
+          eventId: createdEventIds[i % Math.min(17, createdEventIds.length)], // link to past events
           attendanceDate: attDate,
           checkInTime: ["06:05", "08:10", "10:15", "16:20", "18:30"][i % 5],
           checkOutTime: ["08:00", "10:00", "12:00", "18:00", "20:00"][i % 5],
@@ -409,8 +421,9 @@ export async function seedDemoData() {
     }
 
     // ── 9. Donations (50) ─────────────────────────────────────────────────────
-    const donationCount = await getCount(donations);
-    if (donationCount === 0 && createdDevoteeIds.length > 0) {
+    const existingDonations = await storage.getDonations();
+    if (existingDonations.length === 0 && createdDevoteeIds.length > 0) {
+      const now = new Date();
       const donationTypes = ["general", "festival", "seva", "construction", "annadanam", "education"];
       const paymentMethods = ["cash", "upi", "bank_transfer", "cheque", "online"];
       const amounts = [501, 1001, 2100, 5001, 11000, 21000, 51000, 1100, 2501, 3001];
@@ -422,9 +435,9 @@ export async function seedDemoData() {
       ];
 
       for (let i = 0; i < 50; i++) {
-        const donDate = new Date("2024-01-15");
-        donDate.setDate(donDate.getDate() + i * 7);
-        const txnId = `TXN${String(Date.now()).slice(-6)}${i}`;
+        // Spread across past 6 months so trend chart has data
+        const donDate = new Date(now);
+        donDate.setDate(now.getDate() - Math.floor(i * 3.5));
         await storage.createDonation({
           devoteeId: createdDevoteeIds[i % createdDevoteeIds.length],
           amount: String(amounts[i % amounts.length]),
@@ -433,7 +446,7 @@ export async function seedDemoData() {
           purpose: purposes[i % purposes.length],
           donationDate: donDate,
           paymentMethod: paymentMethods[i % paymentMethods.length],
-          transactionId: txnId,
+          transactionId: `TXN${String(i + 1).padStart(6, "0")}`,
           receiptNumber: `RCP${String(i + 1).padStart(5, "0")}`,
           taxDeductible: i % 3 === 0,
           anonymousDonation: i % 10 === 0,
@@ -445,13 +458,17 @@ export async function seedDemoData() {
     }
 
     // ── 10. Event Participation (50) ──────────────────────────────────────────
-    const participationCount = await getCount(eventParticipation);
-    if (participationCount === 0 && createdDevoteeIds.length > 0 && createdEventIds.length > 0) {
+    // Note: eventParticipation has no storage abstraction; direct db insert is
+    // intentional here (same pattern used throughout the codebase for this table).
+    const existingParticipation = await db.select().from(eventParticipation).limit(1);
+    if (existingParticipation.length === 0 && createdDevoteeIds.length > 0 && createdEventIds.length > 0) {
+      const now = new Date();
       const statuses = ["registered", "attended", "attended", "cancelled", "waitlisted"];
+      const rows = [];
       for (let i = 0; i < 50; i++) {
-        const regDate = new Date("2024-05-01");
-        regDate.setDate(regDate.getDate() + i * 3);
-        await db.insert(eventParticipation).values({
+        const regDate = new Date(now);
+        regDate.setDate(now.getDate() - Math.floor(i * 2.5));
+        rows.push({
           eventId: createdEventIds[i % createdEventIds.length],
           devoteeId: createdDevoteeIds[(i + 5) % createdDevoteeIds.length],
           registrationDate: regDate,
@@ -459,29 +476,31 @@ export async function seedDemoData() {
           notes: i % 7 === 0 ? "VIP guest" : undefined,
         });
       }
+      await db.insert(eventParticipation).values(rows);
     }
 
     // ── 11. Volunteering (50) ─────────────────────────────────────────────────
-    const volunteeringCount = await getCount(volunteering);
-    if (volunteeringCount === 0 && createdDevoteeIds.length > 0) {
+    const existingVolunteering = await storage.getVolunteering();
+    if (existingVolunteering.length === 0 && createdDevoteeIds.length > 0) {
+      const now = new Date();
       const activityTypes = ["kitchen_seva", "security", "decoration", "registration", "transport", "media", "cleanup", "teaching", "medical_support", "crowd_management"];
       const volStatuses = ["active", "completed", "completed", "paused"];
       const skills = ["Cooking", "Leadership", "Art & Craft", "Data Entry", "Driving", "Photography", "Cleaning", "Education", "First Aid", "Organization"];
 
       for (let i = 0; i < 50; i++) {
-        const startDate = new Date("2024-02-01");
-        startDate.setDate(startDate.getDate() + i * 6);
+        const startDate = new Date(now);
+        startDate.setDate(now.getDate() - Math.floor(i * 4.5));
         const endDate = new Date(startDate);
-        endDate.setDate(endDate.getDate() + 7);
-        const isCompleted = endDate < new Date();
+        endDate.setDate(startDate.getDate() + 7);
+        const isCompleted = endDate < now;
 
         await storage.createVolunteering({
           devoteeId: createdDevoteeIds[(i + 3) % createdDevoteeIds.length],
           activityType: activityTypes[i % activityTypes.length],
           description: `Volunteering for ${activityTypes[i % activityTypes.length].replace(/_/g, " ")} at community events.`,
           location: ["Mumbai", "Delhi", "Bangalore", "Pune", "Hyderabad"][i % 5],
-          startDate: startDate,
-          endDate: endDate,
+          startDate,
+          endDate,
           hoursCommitted: 4 + (i % 6),
           hoursCompleted: isCompleted ? 4 + (i % 6) : Math.floor((4 + (i % 6)) * 0.6),
           skills: skills[i % skills.length],
@@ -493,51 +512,53 @@ export async function seedDemoData() {
     }
 
     // ── 12. Group Memberships (50) ────────────────────────────────────────────
-    const membershipCount = await getCount(groupMemberships);
-    if (membershipCount === 0 && createdDevoteeIds.length > 0) {
+    // Note: groupMemberships has no storage abstraction; direct db insert is
+    // intentional here (same pattern used throughout the codebase for this table).
+    const existingMemberships = await db.select().from(groupMemberships).limit(1);
+    if (existingMemberships.length === 0 && createdDevoteeIds.length > 0) {
       const allGroups = await storage.getGroups();
       const roles = ["member", "member", "member", "leader", "coordinator"];
       const memStatuses = ["active", "active", "active", "inactive"];
+      const now = new Date();
+      const rows = [];
 
       for (let i = 0; i < 50; i++) {
-        const joinDate = new Date("2023-01-01");
-        joinDate.setMonth(joinDate.getMonth() + Math.floor(i / 4));
+        const joinDate = new Date(now);
+        joinDate.setMonth(now.getMonth() - Math.floor(i / 4));
         const group = allGroups[i % allGroups.length];
-        await db.insert(groupMemberships).values({
+        rows.push({
           groupId: group.id,
           devoteeId: createdDevoteeIds[i % createdDevoteeIds.length],
           role: roles[i % roles.length],
-          joinDate: joinDate,
+          joinDate,
           status: memStatuses[i % memStatuses.length],
           notes: `Member of ${group.groupName}`,
         });
       }
+      await db.insert(groupMemberships).values(rows);
     }
 
-    // ── 13. Group Entries (50 additional entries) ─────────────────────────────
-    const groupEntryCount = await getCount(groupEntries);
-    if (groupEntryCount < 10) {
+    // ── 13. Group Entries (50 additional, distributed across 4 groups) ────────
+    const existingEntries = await storage.getGroupEntries();
+    if (existingEntries.length === 0) {
       const allGroups = await storage.getGroups();
       const familyGroup = allGroups.find(g => g.groupType === "family");
       const mentorGroup = allGroups.find(g => g.groupType === "mentor");
       const volunteerGroup = allGroups.find(g => g.groupType === "volunteer");
       const sabhaGroup = allGroups.find(g => g.groupType === "sabha");
 
-      const entryDefs = [
-        { group: familyGroup, count: 15, makeEntry: (i: number) => ({ groupId: familyGroup!.id, entryData: { familyName: `Demo Family ${i}`, headOfFamily: `Head ${i}`, totalMembers: 3 + (i % 4), fullAddress: `${i * 10} Demo Street`, mobileNumber: `98765${String(40000 + i).padStart(5, "0")}` }, uniqueMemberId: `FAM${String(100 + i).padStart(3, "0")}`, qrIdentifier: `JAISHRIMADHAV_FAM${String(100 + i).padStart(3, "0")}`, isActive: true }) },
-        { group: mentorGroup, count: 10, makeEntry: (i: number) => ({ groupId: mentorGroup!.id, entryData: { firstName: `Mentor${i}`, surname: `Prabhu`, specialization: ["Gita", "Yoga", "Vedanta"][i % 3], experience: 5 + i, mobileNumber: `98765${String(50000 + i).padStart(5, "0")}`, maxMentees: 10 + i } , uniqueMemberId: `MEN${String(100 + i).padStart(3, "0")}`, qrIdentifier: `JAISHRIMADHAV_MEN${String(100 + i).padStart(3, "0")}`, isActive: true }) },
-        { group: volunteerGroup, count: 15, makeEntry: (i: number) => ({ groupId: volunteerGroup!.id, entryData: { firstName: `Vol${i}`, surname: `Seva`, mobileNumber: `98765${String(60000 + i).padStart(5, "0")}`, volunteeringActivities: "Kitchen Seva, Decoration", availableHours: "Weekends", specialSkills: "Cooking" }, uniqueMemberId: `VOL${String(100 + i).padStart(3, "0")}`, qrIdentifier: `JAISHRIMADHAV_VOL${String(100 + i).padStart(3, "0")}`, isActive: true }) },
-        { group: sabhaGroup, count: 10, makeEntry: (i: number) => ({ groupId: sabhaGroup!.id, entryData: { firstName: `Sabha${i}`, surname: `Das`, mobileNumber: `98765${String(70000 + i).padStart(5, "0")}`, dateOfJoining: `202${i % 5}-0${(i % 9) + 1}-01` }, uniqueMemberId: `SAB${String(100 + i).padStart(3, "0")}`, qrIdentifier: `JAISHRIMADHAV_SAB${String(100 + i).padStart(3, "0")}`, isActive: true }) },
+      type EntryDef = { group: typeof familyGroup; count: number; makeEntry: (i: number) => object };
+      const entryDefs: EntryDef[] = [
+        { group: familyGroup, count: 15, makeEntry: (i: number) => ({ groupId: familyGroup!.id, entryData: { familyName: `Demo Family ${i}`, headOfFamily: `Head ${i}`, totalMembers: 3 + (i % 4), fullAddress: `${i * 10} Demo Street`, mobileNumber: `98765${String(40000 + i).padStart(5, "0")}` }, uniqueMemberId: `FAM${String(i).padStart(3, "0")}`, qrIdentifier: `JAISHRIMADHAV_FAM${String(i).padStart(3, "0")}`, isActive: true }) },
+        { group: mentorGroup, count: 10, makeEntry: (i: number) => ({ groupId: mentorGroup!.id, entryData: { firstName: `Mentor${i}`, surname: "Prabhu", specialization: ["Gita", "Yoga", "Vedanta"][i % 3], experience: 5 + i, mobileNumber: `98765${String(50000 + i).padStart(5, "0")}`, maxMentees: 10 + i }, uniqueMemberId: `MEN${String(i).padStart(3, "0")}`, qrIdentifier: `JAISHRIMADHAV_MEN${String(i).padStart(3, "0")}`, isActive: true }) },
+        { group: volunteerGroup, count: 15, makeEntry: (i: number) => ({ groupId: volunteerGroup!.id, entryData: { firstName: `Vol${i}`, surname: "Seva", mobileNumber: `98765${String(60000 + i).padStart(5, "0")}`, volunteeringActivities: "Kitchen Seva, Decoration", availableHours: "Weekends", specialSkills: "Cooking" }, uniqueMemberId: `VOL${String(i).padStart(3, "0")}`, qrIdentifier: `JAISHRIMADHAV_VOL${String(i).padStart(3, "0")}`, isActive: true }) },
+        { group: sabhaGroup, count: 10, makeEntry: (i: number) => ({ groupId: sabhaGroup!.id, entryData: { firstName: `Sabha${i}`, surname: "Das", mobileNumber: `98765${String(70000 + i).padStart(5, "0")}`, dateOfJoining: `202${i % 5}-0${(i % 9) + 1}-01` }, uniqueMemberId: `SAB${String(i).padStart(3, "0")}`, qrIdentifier: `JAISHRIMADHAV_SAB${String(i).padStart(3, "0")}`, isActive: true }) },
       ];
 
-      for (const { group, count: cnt, makeEntry } of entryDefs) {
+      for (const { group, count, makeEntry } of entryDefs) {
         if (!group) continue;
-        for (let i = 1; i <= cnt; i++) {
-          try {
-            await storage.createGroupEntry(makeEntry(i));
-          } catch {
-            // Skip if uniqueMemberId conflicts
-          }
+        for (let i = 1; i <= count; i++) {
+          await storage.createGroupEntry(makeEntry(i) as any);
         }
       }
     }
