@@ -32,7 +32,7 @@ export function DevoteeProfile({ devotee, onEdit, onClose }: DevoteeProfileProps
     return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase();
   };
 
-  const calculateAge = (dateOfBirth?: Date | string) => {
+  const calculateAge = (dateOfBirth?: Date | string | null) => {
     if (!dateOfBirth) return null;
     const birth = new Date(dateOfBirth);
     const today = new Date();

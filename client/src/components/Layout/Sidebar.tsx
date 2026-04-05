@@ -160,7 +160,7 @@ export function Sidebar() {
       <div className="p-4 border-t border-border">
         <div className="flex items-center space-x-3">
           <Avatar className="w-10 h-10">
-            <AvatarImage src={user?.profileImageUrl} alt={user?.firstName} />
+            <AvatarImage src={user?.profileImageUrl ?? undefined} alt={user?.firstName ?? undefined} />
             <AvatarFallback>
               {user?.firstName?.[0]}{user?.lastName?.[0]}
             </AvatarFallback>

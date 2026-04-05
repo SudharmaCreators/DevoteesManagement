@@ -692,83 +692,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/notifications', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user?.claims?.sub || 'dev-user-1';
-      const ms = storage.memStore;
-      const notifications = ms.getNotifications ? ms.getNotifications(userId) : [];
-      res.json(notifications);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch notifications" });
+      const notifs = await storage.getNotifications(userId);
+      res.json(notifs);
+    } catch (err: unknown) {
+      res.status(500).json({ message: err instanceof Error ? err.message : String(err) });
     }
   });
 
   app.post('/api/notifications', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user?.claims?.sub || 'dev-user-1';
-      const ms = storage.memStore;
-      const notification = ms.createNotification ? ms.createNotification({ ...req.body, userId }) : null;
-      res.status(201).json(notification);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to create notification" });
+      const notif = await storage.createNotification({ ...req.body, userId });
+      res.status(201).json(notif);
+    } catch (err: unknown) {
+      res.status(500).json({ message: err instanceof Error ? err.message : String(err) });
     }
   });
 
   app.put('/api/notifications/:id/read', isAuthenticated, async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
-      const ms = storage.memStore;
-      const notification = ms.markNotificationRead ? ms.markNotificationRead(id) : null;
-      res.json(notification);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to mark notification as read" });
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
+      const notif = await storage.markNotificationRead(id);
+      if (!notif) return res.status(404).json({ message: "Notification not found" });
+      res.json(notif);
+    } catch (err: unknown) {
+      res.status(500).json({ message: err instanceof Error ? err.message : String(err) });
     }
   });
 
   app.put('/api/notifications/read-all', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user?.claims?.sub || 'dev-user-1';
-      const ms = storage.memStore;
-      if (ms.markAllNotificationsRead) ms.markAllNotificationsRead(userId);
+      await storage.markAllNotificationsRead(userId);
       res.json({ success: true });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to mark all notifications as read" });
+    } catch (err: unknown) {
+      res.status(500).json({ message: err instanceof Error ? err.message : String(err) });
     }
   });
 
   app.delete('/api/notifications/:id', isAuthenticated, async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
-      const ms = storage.memStore;
-      const success = ms.deleteNotification ? ms.deleteNotification(id) : false;
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
+      const success = await storage.deleteNotification(id);
       res.status(success ? 204 : 404).send();
-    } catch (error) {
-      res.status(500).json({ message: "Failed to delete notification" });
+    } catch (err: unknown) {
+      res.status(500).json({ message: err instanceof Error ? err.message : String(err) });
     }
   });
 
   app.put('/api/notifications/:id/pin', isAuthenticated, async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
-      const ms = storage.memStore;
-      const updated = ms.pinNotification(id);
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
+      const updated = await storage.pinNotification(id);
       if (!updated) return res.status(404).json({ message: "Notification not found" });
       res.json(updated);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to pin notification" });
+    } catch (err: unknown) {
+      res.status(500).json({ message: err instanceof Error ? err.message : String(err) });
     }
   });
 
   app.put('/api/notifications/:id/unpin', isAuthenticated, async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
-      const ms = storage.memStore;
-      const updated = ms.unpinNotification(id);
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
+      const updated = await storage.unpinNotification(id);
       if (!updated) return res.status(404).json({ message: "Notification not found" });
       res.json(updated);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to unpin notification" });
+    } catch (err: unknown) {
+      res.status(500).json({ message: err instanceof Error ? err.message : String(err) });
     }
   });
 
@@ -776,52 +770,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/devotees/:id/documents', isAuthenticated, async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
-      const ms = storage.memStore;
-      const docs = ms.getDocuments(id);
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
+      const docs = await storage.getDocuments(id);
       res.json(docs);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch documents" });
+    } catch (err: unknown) {
+      res.status(500).json({ message: err instanceof Error ? err.message : String(err) });
     }
   });
 
   app.post('/api/devotees/:id/documents', requireGodMode, async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
       const { type, filename, base64 } = req.body;
       if (!type || !filename || !base64) {
         return res.status(400).json({ message: "type, filename, and base64 are required" });
       }
-      const ms = storage.memStore;
-      const doc = ms.addDocument(id, { type, filename, base64 });
+      const doc = await storage.addDocument(id, { type, filename, base64 });
       res.json(doc);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to add document" });
+    } catch (err: unknown) {
+      res.status(500).json({ message: err instanceof Error ? err.message : String(err) });
     }
   });
 
   app.delete('/api/devotees/:id/documents/:docId', requireGodMode, async (req, res) => {
     try {
       const id = parseIntSafe(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: "Invalid ID" });
+      if (id === null) return res.status(400).json({ message: "Invalid ID" });
       const { docId } = req.params;
-      const ms = storage.memStore;
-      const success = ms.deleteDocument(id, docId);
+      const success = await storage.deleteDocument(id, docId);
       res.status(success ? 204 : 404).send();
-    } catch (error) {
-      res.status(500).json({ message: "Failed to delete document" });
+    } catch (err: unknown) {
+      res.status(500).json({ message: err instanceof Error ? err.message : String(err) });
     }
   });
 
   // Users management routes (admin/manager)
   app.get('/api/users', isAuthenticated, async (req, res) => {
     try {
-      const ms = storage.memStore;
-      const users = ms.getAllUsers ? ms.getAllUsers() : [];
-      res.json(users);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch users" });
+      const allUsers = await storage.memStore.getAllUsers();
+      res.json(allUsers);
+    } catch (err: unknown) {
+      res.status(500).json({ message: err instanceof Error ? err.message : String(err) });
     }
   });
 
@@ -1034,19 +1024,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ─── GOD MODE: AUDIT LOG ───────────────────────────────────────────────────
-  const auditLog: any[] = [];
-  const addAudit = (action: string, entity: string, entityId: any, userId: string, before: any, after: any) => {
-    auditLog.unshift({ id: auditLog.length + 1, timestamp: new Date().toISOString(), action, entity, entityId, userId, before, after });
-    if (auditLog.length > 500) auditLog.pop();
+  const addAudit = (action: string, entity: string, entityId: number | null, userId: string, before: unknown, after: unknown) => {
+    storage.createAuditLog({ action, entity, entityId, performedBy: userId, before: before ?? null, after: after ?? null })
+      .catch((err: unknown) => console.error("Failed to write audit log:", err instanceof Error ? err.message : String(err)));
   };
   (app as any)._addAudit = addAudit;
 
   app.get('/api/admin/audit', isAuthenticated, async (req: any, res) => {
-    const { entity, action, limit = "100" } = req.query;
-    let logs = [...auditLog];
-    if (entity) logs = logs.filter(l => l.entity === entity);
-    if (action) logs = logs.filter(l => l.action === action);
-    res.json(logs.slice(0, Number(limit)));
+    try {
+      const { limit = "100" } = req.query;
+      const limitNum = parseIntSafe(String(limit)) ?? 100;
+      let logs = await storage.getAuditLogs(limitNum);
+      const { entity, action } = req.query;
+      if (entity) logs = logs.filter(l => l.entity === entity);
+      if (action) logs = logs.filter(l => l.action === action);
+      res.json(logs);
+    } catch (err: unknown) {
+      res.status(500).json({ message: err instanceof Error ? err.message : String(err) });
+    }
   });
 
   // ─── GOD MODE: MACROS ──────────────────────────────────────────────────────
@@ -1062,21 +1057,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.put('/api/admin/macros/:id', isAuthenticated, async (req: any, res) => {
-    const idx = macros.findIndex(m => m.id === Number(req.params.id));
+    const macroId = parseIntSafe(req.params.id);
+    if (macroId === null) return res.status(400).json({ message: "Invalid macro id" });
+    const idx = macros.findIndex(m => m.id === macroId);
     if (idx === -1) return res.status(404).json({ message: "Macro not found" });
     macros[idx] = { ...macros[idx], ...req.body, updatedAt: new Date().toISOString() };
     res.json(macros[idx]);
   });
 
   app.delete('/api/admin/macros/:id', isAuthenticated, async (req, res) => {
-    const idx = macros.findIndex(m => m.id === Number(req.params.id));
+    const macroId = parseIntSafe(req.params.id);
+    if (macroId === null) return res.status(400).json({ message: "Invalid macro id" });
+    const idx = macros.findIndex(m => m.id === macroId);
     if (idx === -1) return res.status(404).json({ message: "Macro not found" });
     macros.splice(idx, 1);
     res.json({ message: "Macro deleted" });
   });
 
   app.post('/api/admin/macros/:id/run', isAuthenticated, async (req: any, res) => {
-    const macro = macros.find(m => m.id === Number(req.params.id));
+    const macroId = parseIntSafe(req.params.id);
+    if (macroId === null) return res.status(400).json({ message: "Invalid macro id" });
+    const macro = macros.find(m => m.id === macroId);
     if (!macro) return res.status(404).json({ message: "Macro not found" });
     const results: any[] = [];
     for (const step of (macro.steps || [])) {

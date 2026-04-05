@@ -523,21 +523,49 @@ export type DashboardLayout = typeof dashboardLayouts.$inferSelect;
 export type InsertUserPreferences = z.infer<typeof insertUserPreferencesSchema>;
 export type UserPreferences = typeof userPreferences.$inferSelect;
 
-// ─── Notification (in-memory only, not persisted in DB) ──────────────────────
-export const notificationSchema = z.object({
-  id: z.number(),
-  userId: z.string(),
-  title: z.string(),
-  message: z.string(),
-  type: z.enum(["info", "success", "warning", "error"]),
-  isRead: z.boolean(),
-  isPinned: z.boolean(),
-  relatedEntity: z.string().optional(),
-  relatedId: z.number().optional(),
-  createdAt: z.date(),
+// ─── Notifications table (persisted) ─────────────────────────────────────────
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  title: varchar("title").notNull(),
+  message: text("message").notNull(),
+  type: varchar("type").notNull().default("info"),
+  isRead: boolean("is_read").notNull().default(false),
+  isPinned: boolean("is_pinned").notNull().default(false),
+  relatedEntity: varchar("related_entity"),
+  relatedId: integer("related_id"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const insertNotificationSchema = notificationSchema.omit({ id: true, createdAt: true });
+// ─── Devotee Documents table (persisted) ──────────────────────────────────────
+export const devoteeDocuments = pgTable("devotee_documents", {
+  id: varchar("id").primaryKey(),
+  devoteeId: integer("devotee_id").notNull(),
+  type: varchar("type").notNull(),
+  filename: varchar("filename").notNull(),
+  base64: text("base64").notNull(),
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+});
 
-export type Notification = z.infer<typeof notificationSchema>;
+// ─── Audit Log table (persisted) ──────────────────────────────────────────────
+export const auditLogs = pgTable("audit_logs", {
+  id: serial("id").primaryKey(),
+  action: varchar("action").notNull(),
+  entity: varchar("entity").notNull(),
+  entityId: integer("entity_id"),
+  performedBy: varchar("performed_by").notNull(),
+  before: jsonb("before"),
+  after: jsonb("after"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true });
+export const insertDevoteeDocumentSchema = createInsertSchema(devoteeDocuments).omit({ uploadedAt: true });
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: true, createdAt: true });
+
+export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type DevoteeDocument = typeof devoteeDocuments.$inferSelect;
+export type InsertDevoteeDocument = z.infer<typeof insertDevoteeDocumentSchema>;
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;

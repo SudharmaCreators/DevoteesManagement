@@ -14,7 +14,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { insertDevoteeSchema, type InsertDevotee, type Devotee } from "@shared/schema";
+import { insertDevoteeSchema, type InsertDevotee, type Devotee, type Family, type Mentor } from "@shared/schema";
 import { 
   User, 
   Mail, 
@@ -87,11 +87,11 @@ export function DevoteeForm({ devotee, onSuccess, onCancel }: DevoteeFormProps) 
   }, [devotee]);
 
   // Fetch families and mentors for dropdowns
-  const { data: families = [] } = useQuery({
+  const { data: families = [] } = useQuery<Family[]>({
     queryKey: ["/api/families"],
   });
 
-  const { data: mentors = [] } = useQuery({
+  const { data: mentors = [] } = useQuery<Mentor[]>({
     queryKey: ["/api/mentors"],
   });
 

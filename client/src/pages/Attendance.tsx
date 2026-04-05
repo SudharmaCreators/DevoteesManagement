@@ -16,6 +16,7 @@ import { Calendar, Plus, CheckCircle, XCircle, Clock, AlertCircle, Users, Trendi
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/useAuth";
 import type { Attendance, Devotee, Event } from "@shared/schema";
 
 type AttendanceRecord = Attendance & { devoteeName?: string; eventTitle?: string };
@@ -28,6 +29,7 @@ export default function AttendancePage() {
   const [newRecord, setNewRecord] = useState({ devoteeId: "", eventId: "", status: "present", checkInTime: "09:00", notes: "" });
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const { data: attendanceRaw = [], isLoading: attLoading } = useQuery<Attendance[]>({ queryKey: ["/api/attendance"] });
   const { data: devotees = [], isLoading: devLoading } = useQuery<Devotee[]>({ queryKey: ["/api/devotees"] });
@@ -410,7 +412,7 @@ export default function AttendancePage() {
                 status: newRecord.status,
                 checkInTime: newRecord.checkInTime || null,
                 notes: newRecord.notes || null,
-                recordedBy: "admin",
+                recordedBy: user?.id || "system",
               })}
             >
               {createMutation.isPending ? "Saving..." : "Mark Attendance"}

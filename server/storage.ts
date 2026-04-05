@@ -15,6 +15,9 @@ import {
   sabhaLocations,
   dashboardLayouts,
   userPreferences,
+  notifications,
+  devoteeDocuments,
+  auditLogs,
   type User,
   type UpsertUser,
   type Devotee,
@@ -43,6 +46,11 @@ import {
   type InsertDashboardLayout,
   type UserPreferences,
   type InsertUserPreferences,
+  type Notification,
+  type InsertNotification,
+  type DevoteeDocument,
+  type AuditLog,
+  type InsertAuditLog,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, gte, lte, count, sum, sql } from "drizzle-orm";
@@ -118,6 +126,21 @@ export interface IStorage {
 
   getUserPreferences(userId: string): Promise<UserPreferences | undefined>;
   upsertUserPreferences(preferences: InsertUserPreferences): Promise<UserPreferences>;
+
+  getNotifications(userId: string): Promise<Notification[]>;
+  createNotification(data: InsertNotification): Promise<Notification>;
+  markNotificationRead(id: number): Promise<Notification | undefined>;
+  markAllNotificationsRead(userId: string): Promise<void>;
+  deleteNotification(id: number): Promise<boolean>;
+  pinNotification(id: number): Promise<Notification | undefined>;
+  unpinNotification(id: number): Promise<Notification | undefined>;
+
+  getDocuments(devoteeId: number): Promise<DevoteeDocument[]>;
+  addDocument(devoteeId: number, doc: { type: string; filename: string; base64: string }): Promise<DevoteeDocument>;
+  deleteDocument(devoteeId: number, docId: string): Promise<boolean>;
+
+  createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
+  getAuditLogs(limit?: number): Promise<AuditLog[]>;
 
   getStats(): Promise<{
     totalDevotees: number;
@@ -524,6 +547,65 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
+  async getNotifications(userId: string): Promise<Notification[]> {
+    return db.select().from(notifications).where(eq(notifications.userId, userId)).orderBy(desc(notifications.createdAt));
+  }
+
+  async createNotification(data: InsertNotification): Promise<Notification> {
+    const [row] = await db.insert(notifications).values(data).returning();
+    return row;
+  }
+
+  async markNotificationRead(id: number): Promise<Notification | undefined> {
+    const [row] = await db.update(notifications).set({ isRead: true }).where(eq(notifications.id, id)).returning();
+    return row;
+  }
+
+  async markAllNotificationsRead(userId: string): Promise<void> {
+    await db.update(notifications).set({ isRead: true }).where(eq(notifications.userId, userId));
+  }
+
+  async deleteNotification(id: number): Promise<boolean> {
+    const result = await db.delete(notifications).where(eq(notifications.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async pinNotification(id: number): Promise<Notification | undefined> {
+    const [row] = await db.update(notifications).set({ isPinned: true }).where(eq(notifications.id, id)).returning();
+    return row;
+  }
+
+  async unpinNotification(id: number): Promise<Notification | undefined> {
+    const [row] = await db.update(notifications).set({ isPinned: false }).where(eq(notifications.id, id)).returning();
+    return row;
+  }
+
+  async getDocuments(devoteeId: number): Promise<DevoteeDocument[]> {
+    return db.select().from(devoteeDocuments).where(eq(devoteeDocuments.devoteeId, devoteeId));
+  }
+
+  async addDocument(devoteeId: number, doc: { type: string; filename: string; base64: string }): Promise<DevoteeDocument> {
+    const id = `doc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const [row] = await db.insert(devoteeDocuments).values({ id, devoteeId, ...doc }).returning();
+    return row;
+  }
+
+  async deleteDocument(devoteeId: number, docId: string): Promise<boolean> {
+    const result = await db.delete(devoteeDocuments)
+      .where(and(eq(devoteeDocuments.id, docId), eq(devoteeDocuments.devoteeId, devoteeId)))
+      .returning();
+    return result.length > 0;
+  }
+
+  async createAuditLog(log: InsertAuditLog): Promise<AuditLog> {
+    const [row] = await db.insert(auditLogs).values(log).returning();
+    return row;
+  }
+
+  async getAuditLogs(limit = 100): Promise<AuditLog[]> {
+    return db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt)).limit(limit);
+  }
+
   async getDonationTrends(): Promise<Array<{ month: string; amount: number }>> {
     const rows = await db.execute(sql`
       SELECT
@@ -597,9 +679,10 @@ class FallbackStorage implements IStorage {
     }
     try {
       return await operation(this.primaryStorage);
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (!this.usingFallback) {
-        console.warn("⚠️ Database operation failed, switching to in-memory storage:", error?.message);
+        const msg = error instanceof Error ? error.message : String(error);
+        console.warn("⚠️ Database operation failed, switching to in-memory storage:", msg);
         this.usingFallback = true;
       }
       return await operation(this.fallbackStorage);
@@ -676,6 +759,21 @@ class FallbackStorage implements IStorage {
 
   async getUserPreferences(userId: string) { return this.executeWithFallback(s => s.getUserPreferences(userId)); }
   async upsertUserPreferences(preferences: InsertUserPreferences) { return this.executeWithFallback(s => s.upsertUserPreferences(preferences)); }
+
+  async getNotifications(userId: string) { return this.executeWithFallback(s => s.getNotifications(userId)); }
+  async createNotification(data: InsertNotification) { return this.executeWithFallback(s => s.createNotification(data)); }
+  async markNotificationRead(id: number) { return this.executeWithFallback(s => s.markNotificationRead(id)); }
+  async markAllNotificationsRead(userId: string) { return this.executeWithFallback(s => s.markAllNotificationsRead(userId)); }
+  async deleteNotification(id: number) { return this.executeWithFallback(s => s.deleteNotification(id)); }
+  async pinNotification(id: number) { return this.executeWithFallback(s => s.pinNotification(id)); }
+  async unpinNotification(id: number) { return this.executeWithFallback(s => s.unpinNotification(id)); }
+
+  async getDocuments(devoteeId: number) { return this.executeWithFallback(s => s.getDocuments(devoteeId)); }
+  async addDocument(devoteeId: number, doc: { type: string; filename: string; base64: string }) { return this.executeWithFallback(s => s.addDocument(devoteeId, doc)); }
+  async deleteDocument(devoteeId: number, docId: string) { return this.executeWithFallback(s => s.deleteDocument(devoteeId, docId)); }
+
+  async createAuditLog(log: InsertAuditLog) { return this.executeWithFallback(s => s.createAuditLog(log)); }
+  async getAuditLogs(limit?: number) { return this.executeWithFallback(s => s.getAuditLogs(limit)); }
 
   async getStats() { return this.executeWithFallback(s => s.getStats()); }
   async getDonationTrends() { return this.executeWithFallback(s => s.getDonationTrends()); }

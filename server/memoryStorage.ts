@@ -27,32 +27,13 @@ import {
   type InsertDashboardLayout,
   type UserPreferences,
   type InsertUserPreferences,
+  type Notification,
+  type InsertNotification,
+  type DevoteeDocument,
+  type AuditLog,
+  type InsertAuditLog,
 } from "@shared/schema";
 import { type IStorage } from "./storage";
-
-// Notification type (not in DB schema, kept in memory)
-export interface Notification {
-  id: number;
-  userId: string;
-  title: string;
-  message: string;
-  type: 'info' | 'success' | 'warning' | 'error';
-  isRead: boolean;
-  isPinned: boolean;
-  relatedEntity?: string;
-  relatedId?: number;
-  createdAt: Date;
-}
-
-// Document type for devotee documents
-export interface DevoteeDocument {
-  id: string;
-  devoteeId: number;
-  type: string;
-  filename: string;
-  base64: string;
-  uploadedAt: Date;
-}
 
 // In-memory storage implementation
 export class MemoryStorage implements IStorage {
@@ -144,17 +125,17 @@ export class MemoryStorage implements IStorage {
 
     // ─── GROUPS ────────────────────────────────────────────────────────────
     const sampleGroups: Group[] = [
-      { id: 1, groupName: "Youth Satsang (Yuva Mandal)", description: "For devotees aged 16-30. Meets every Saturday evening for kirtan and discussion.", mentorId: 1, createdAt: d(600), updatedAt: now },
-      { id: 2, groupName: "Family Circle", description: "Family devotional activities, parenting support, and joint festivals.", mentorId: null, createdAt: d(400), updatedAt: now },
-      { id: 3, groupName: "Kirtan Mandali", description: "Weekly kirtan and bhajan group. Open to all levels. Meets every Wednesday.", mentorId: null, createdAt: d(700), updatedAt: now },
-      { id: 4, groupName: "Seva Squad", description: "Volunteers for event setup, prasad, decoration, and logistics.", mentorId: null, createdAt: d(500), updatedAt: now },
-      { id: 5, groupName: "Gita Study Circle", description: "Bhagavad Gita chapter-by-chapter study led by Prof. Nilesh Desai. Meets every Tuesday.", mentorId: null, createdAt: d(800), updatedAt: now },
-      { id: 6, groupName: "Women's Satsang (Mahila Mandal)", description: "Women's devotional meetings every Thursday at the center.", mentorId: null, createdAt: d(550), updatedAt: now },
-      { id: 7, groupName: "Health and Wellness Group", description: "Yoga, Pranayama, and Ayurvedic health awareness led by Dr. Hansa Joshi.", mentorId: null, createdAt: d(300), updatedAt: now },
-      { id: 8, groupName: "Golok Dham Satsang", description: "Exclusive study and meditation circle focused on the spiritual realm of Golok Vrindavan and its pastimes.", mentorId: 1, createdAt: d(200), updatedAt: now },
-      { id: 9, groupName: "IWC – Interfaith Wellness Circle", description: "Interfaith dialogue, community wellness events, and spiritual exchange with other traditions.", mentorId: null, createdAt: d(180), updatedAt: now },
-      { id: 10, groupName: "Katha Pravachan Group", description: "Monthly katha and pravachan sessions featuring visiting saints and in-house speakers from the community.", mentorId: 2, createdAt: d(250), updatedAt: now },
-      { id: 11, groupName: "Narayan Bhakt Sabha", description: "Dedicated followers of Lord Narayan who gather weekly for Vishnu Sahasranama chanting and Purana readings.", mentorId: null, createdAt: d(150), updatedAt: now },
+      { id: 1, groupName: "Youth Satsang (Yuva Mandal)", groupType: "study", description: "For devotees aged 16-30. Meets every Saturday evening for kirtan and discussion.", leaderId: 1, capacity: 50, currentMembers: 22, location: null, meetingSchedule: "Every Saturday 6PM", requirements: null, customFields: null, createdBy: "admin", isActive: true, createdAt: d(600), updatedAt: now },
+      { id: 2, groupName: "Family Circle", groupType: "family", description: "Family devotional activities, parenting support, and joint festivals.", leaderId: null, capacity: 100, currentMembers: 35, location: null, meetingSchedule: "Monthly", requirements: null, customFields: null, createdBy: "admin", isActive: true, createdAt: d(400), updatedAt: now },
+      { id: 3, groupName: "Kirtan Mandali", groupType: "worship", description: "Weekly kirtan and bhajan group. Open to all levels. Meets every Wednesday.", leaderId: null, capacity: 40, currentMembers: 18, location: null, meetingSchedule: "Every Wednesday 7PM", requirements: null, customFields: null, createdBy: "admin", isActive: true, createdAt: d(700), updatedAt: now },
+      { id: 4, groupName: "Seva Squad", groupType: "seva", description: "Volunteers for event setup, prasad, decoration, and logistics.", leaderId: null, capacity: 30, currentMembers: 14, location: null, meetingSchedule: "As needed", requirements: null, customFields: null, createdBy: "admin", isActive: true, createdAt: d(500), updatedAt: now },
+      { id: 5, groupName: "Gita Study Circle", groupType: "study", description: "Bhagavad Gita chapter-by-chapter study led by Prof. Nilesh Desai. Meets every Tuesday.", leaderId: null, capacity: 25, currentMembers: 12, location: null, meetingSchedule: "Every Tuesday 6PM", requirements: null, customFields: null, createdBy: "admin", isActive: true, createdAt: d(800), updatedAt: now },
+      { id: 6, groupName: "Women's Satsang (Mahila Mandal)", groupType: "satsang", description: "Women's devotional meetings every Thursday at the center.", leaderId: null, capacity: 60, currentMembers: 28, location: null, meetingSchedule: "Every Thursday 10AM", requirements: null, customFields: null, createdBy: "admin", isActive: true, createdAt: d(550), updatedAt: now },
+      { id: 7, groupName: "Health and Wellness Group", groupType: "wellness", description: "Yoga, Pranayama, and Ayurvedic health awareness led by Dr. Hansa Joshi.", leaderId: null, capacity: 30, currentMembers: 15, location: null, meetingSchedule: "Bi-weekly", requirements: null, customFields: null, createdBy: "admin", isActive: true, createdAt: d(300), updatedAt: now },
+      { id: 8, groupName: "Golok Dham Satsang", groupType: "satsang", description: "Exclusive study and meditation circle focused on the spiritual realm of Golok Vrindavan and its pastimes.", leaderId: 1, capacity: 20, currentMembers: 8, location: null, meetingSchedule: "Monthly", requirements: null, customFields: null, createdBy: "admin", isActive: true, createdAt: d(200), updatedAt: now },
+      { id: 9, groupName: "IWC – Interfaith Wellness Circle", groupType: "wellness", description: "Interfaith dialogue, community wellness events, and spiritual exchange with other traditions.", leaderId: null, capacity: 40, currentMembers: 16, location: null, meetingSchedule: "Monthly", requirements: null, customFields: null, createdBy: "admin", isActive: true, createdAt: d(180), updatedAt: now },
+      { id: 10, groupName: "Katha Pravachan Group", groupType: "study", description: "Monthly katha and pravachan sessions featuring visiting saints and in-house speakers from the community.", leaderId: 2, capacity: 200, currentMembers: 85, location: null, meetingSchedule: "Monthly", requirements: null, customFields: null, createdBy: "admin", isActive: true, createdAt: d(250), updatedAt: now },
+      { id: 11, groupName: "Narayan Bhakt Sabha", groupType: "worship", description: "Dedicated followers of Lord Narayan who gather weekly for Vishnu Sahasranama chanting and Purana readings.", leaderId: null, capacity: 50, currentMembers: 23, location: null, meetingSchedule: "Weekly", requirements: null, customFields: null, createdBy: "admin", isActive: true, createdAt: d(150), updatedAt: now },
     ];
     sampleGroups.forEach(g => { this.groups.set(g.id, g); this.counters.groups = Math.max(this.counters.groups, g.id + 1); });
 
@@ -215,7 +196,7 @@ export class MemoryStorage implements IStorage {
       allDevIds.forEach(dvId => {
         const threshold = dvId <= 9 ? 0.12 : 0.28;
         const status = Math.random() > threshold ? "present" : "absent";
-        sampleAttendance.push({ id: attId++, devoteeId: dvId, eventId: evId, attendanceDate: d(daysAgo), status, checkInTime: status === "present" ? "09:10" : null, checkOutTime: status === "present" ? "12:00" : null, notes: null, markedBy: "admin", createdAt: d(daysAgo), updatedAt: d(daysAgo) });
+        sampleAttendance.push({ id: attId++, devoteeId: dvId, eventId: evId, attendanceDate: d(daysAgo), status, checkInTime: status === "present" ? "09:10" : null, checkOutTime: status === "present" ? "12:00" : null, notes: null, recordedBy: "admin", createdAt: d(daysAgo) });
       });
     });
 
@@ -225,7 +206,7 @@ export class MemoryStorage implements IStorage {
         const dt = new Date(now); dt.setMonth(dt.getMonth() - month);
         [1, 2, 3].forEach(w => {
           const dt2 = new Date(dt); dt2.setDate(w * 7);
-          sampleAttendance.push({ id: attId++, devoteeId: dvId, eventId: 8, attendanceDate: dt2, status: Math.random() > 0.15 ? "present" : "absent", checkInTime: "09:00", checkOutTime: "11:30", notes: null, markedBy: "admin", createdAt: dt2, updatedAt: dt2 });
+          sampleAttendance.push({ id: attId++, devoteeId: dvId, eventId: 8, attendanceDate: dt2, status: Math.random() > 0.15 ? "present" : "absent", checkInTime: "09:00", checkOutTime: "11:30", notes: null, recordedBy: "admin", createdAt: dt2 });
         });
       }
     });
@@ -302,17 +283,17 @@ export class MemoryStorage implements IStorage {
 
     // ─── MANDALS ───────────────────────────────────────────────────────────
     const sampleMandals: Mandal[] = [
-      { id: 1, name: "Ahmedabad Central Mandal", code: "ACM-001", contactPerson: "Ramesh Sharma", contactPhone: "9876543210", createdAt: d(900), updatedAt: now },
-      { id: 2, name: "Surat Mandal", code: "SRT-002", contactPerson: "Suresh Patel", contactPhone: "9876543220", createdAt: d(700), updatedAt: now },
-      { id: 3, name: "Vadodara Mandal", code: "VDR-003", contactPerson: "Nilesh Desai", contactPhone: "9876543230", createdAt: d(500), updatedAt: now },
+      { id: 1, name: "Ahmedabad Central Mandal", code: "AC", hindiName: null, description: "Central Ahmedabad devotional mandal", isActive: true, createdAt: d(900) },
+      { id: 2, name: "Surat Mandal", code: "SR", hindiName: null, description: "Surat city mandal", isActive: true, createdAt: d(700) },
+      { id: 3, name: "Vadodara Mandal", code: "VD", hindiName: null, description: "Vadodara mandal", isActive: true, createdAt: d(500) },
     ];
     sampleMandals.forEach(m => { this.mandals.set(m.id, m); this.counters.mandals = Math.max(this.counters.mandals, m.id + 1); });
 
     // ─── SABHA LOCATIONS ──────────────────────────────────────────────────
     const sampleLocations: SabhaLocation[] = [
-      { id: 1, name: "Main Sabha Hall Ahmedabad", address: "42 Tulsi Nagar, Navrangpura, Ahmedabad 380009", zipCode: "380009", facilities: ["PA Sound System", "AC 1000 sq ft", "Projector and Screen", "Parking 50 cars", "Full Kitchen", "Stage 30x20 ft"], createdAt: d(900), updatedAt: now },
-      { id: 2, name: "Community Hall Surat", address: "17 Krishna Lane, Athwa, Surat 395001", zipCode: "395001", facilities: ["PA System", "Fans and Coolers", "Projection screen", "Parking 30 cars", "Pantry"], createdAt: d(600), updatedAt: now },
-      { id: 3, name: "Radha Niwas Ashram Vadodara", address: "5 Alkapuri, Vadodara 390007", zipCode: "390007", facilities: ["Open courtyard 2000 sq ft", "Sound system", "Dormitory 30 beds", "Full kitchen", "Garden"], createdAt: d(400), updatedAt: now },
+      { id: 1, name: "Main Sabha Hall Ahmedabad", address: "42 Tulsi Nagar, Navrangpura, Ahmedabad 380009", city: "Ahmedabad", state: "Gujarat", isActive: true, createdAt: d(900) },
+      { id: 2, name: "Community Hall Surat", address: "17 Krishna Lane, Athwa, Surat 395001", city: "Surat", state: "Gujarat", isActive: true, createdAt: d(600) },
+      { id: 3, name: "Radha Niwas Ashram Vadodara", address: "5 Alkapuri, Vadodara 390007", city: "Vadodara", state: "Gujarat", isActive: true, createdAt: d(400) },
     ];
     sampleLocations.forEach(l => { this.sabhaLocations.set(l.id, l); this.counters.sabhaLocations = Math.max(this.counters.sabhaLocations, l.id + 1); });
 
@@ -320,12 +301,12 @@ export class MemoryStorage implements IStorage {
     const sampleNotifications: Notification[] = [
       { id: 1, userId: "dev-user-1", title: "New Devotee Registered", message: "Paresh Trivedi has been added to the system", type: "success", isRead: false, isPinned: false, relatedEntity: "devotee", relatedId: 20, createdAt: d(1) },
       { id: 2, userId: "dev-user-1", title: "Upcoming Event", message: "Janmashtami Mahotsav 2026 is scheduled in 18 days. Registration opens immediately. Please coordinate with Yuva Mandal for their drama performance.", type: "info", isRead: false, isPinned: true, relatedEntity: "event", relatedId: 1, createdAt: d(2) },
-      { id: 3, userId: "dev-user-1", title: "Donation Received", message: "₹50,000 donation received from Suresh Patel for Building Fund", type: "success", isRead: false, isPinned: false, relatedEntity: "donation", createdAt: d(3) },
-      { id: 4, userId: "dev-user-1", title: "Low Attendance Alert", message: "Attendance for last satsang was below 60% — please follow up with the Seva Squad to understand root cause and improve outreach", type: "warning", isRead: false, isPinned: false, relatedEntity: "attendance", createdAt: d(5) },
-      { id: 5, userId: "dev-user-1", title: "Mentor Assignment Needed", message: "5 devotees are without assigned mentors", type: "warning", isRead: true, isPinned: false, relatedEntity: "mentor", createdAt: d(7) },
+      { id: 3, userId: "dev-user-1", title: "Donation Received", message: "₹50,000 donation received from Suresh Patel for Building Fund", type: "success", isRead: false, isPinned: false, relatedEntity: "donation", relatedId: null, createdAt: d(3) },
+      { id: 4, userId: "dev-user-1", title: "Low Attendance Alert", message: "Attendance for last satsang was below 60% — please follow up with the Seva Squad to understand root cause and improve outreach", type: "warning", isRead: false, isPinned: false, relatedEntity: "attendance", relatedId: null, createdAt: d(5) },
+      { id: 5, userId: "dev-user-1", title: "Mentor Assignment Needed", message: "5 devotees are without assigned mentors", type: "warning", isRead: true, isPinned: false, relatedEntity: "mentor", relatedId: null, createdAt: d(7) },
       { id: 6, userId: "dev-user-1", title: "Event Archived", message: "Diwali Puja 2025 has been automatically archived", type: "info", isRead: true, isPinned: false, relatedEntity: "event", relatedId: 10, createdAt: d(10) },
       { id: 7, userId: "dev-user-1", title: "Profile Update", message: "Ramesh Sharma updated their profile information", type: "info", isRead: true, isPinned: false, relatedEntity: "devotee", relatedId: 1, createdAt: d(12) },
-      { id: 8, userId: "dev-user-1", title: "Volunteer Hours Logged", message: "12 new volunteering records logged this week", type: "success", isRead: true, isPinned: false, relatedEntity: "volunteering", createdAt: d(14) },
+      { id: 8, userId: "dev-user-1", title: "Volunteer Hours Logged", message: "12 new volunteering records logged this week", type: "success", isRead: true, isPinned: false, relatedEntity: "volunteering", relatedId: null, createdAt: d(14) },
     ];
     sampleNotifications.forEach(n => { this.notifications.set(n.id, n); this.counters.notifications = Math.max(this.counters.notifications, n.id + 1); });
   }
@@ -392,7 +373,7 @@ export class MemoryStorage implements IStorage {
   // Devotee operations
   async getDevotees(): Promise<Devotee[]> {
     return Array.from(this.devotees.values()).sort((a, b) => 
-      b.createdAt.getTime() - a.createdAt.getTime()
+      (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0)
     );
   }
 
@@ -460,7 +441,7 @@ export class MemoryStorage implements IStorage {
   // Family operations
   async getFamilies(): Promise<Family[]> {
     return Array.from(this.families.values()).sort((a, b) => 
-      b.createdAt.getTime() - a.createdAt.getTime()
+      (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0)
     );
   }
 
@@ -514,7 +495,7 @@ export class MemoryStorage implements IStorage {
   // Mentor operations
   async getMentors(): Promise<Mentor[]> {
     return Array.from(this.mentors.values()).sort((a, b) => 
-      b.createdAt.getTime() - a.createdAt.getTime()
+      (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0)
     );
   }
 
@@ -573,18 +554,17 @@ export class MemoryStorage implements IStorage {
       result = result.filter(a => a.eventId === eventId);
     }
     
-    return result.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    return result.sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
   }
 
   async createAttendance(attendanceData: InsertAttendance): Promise<Attendance> {
     const now = new Date();
     const id = this.counters.attendance++;
-    const attendance: Attendance = {
+    const attendance = {
       id,
       ...attendanceData,
       createdAt: now,
-      updatedAt: now,
-    };
+    } as Attendance;
     this.attendance.set(id, attendance);
     return attendance;
   }
@@ -597,7 +577,6 @@ export class MemoryStorage implements IStorage {
     const updatedAttendance: Attendance = {
       ...existingAttendance,
       ...attendanceData,
-      updatedAt: new Date(),
     };
     this.attendance.set(id, updatedAttendance);
     return updatedAttendance;
@@ -615,18 +594,17 @@ export class MemoryStorage implements IStorage {
       result = result.filter(d => d.devoteeId === devoteeId);
     }
     
-    return result.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    return result.sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
   }
 
   async createDonation(donationData: InsertDonation): Promise<Donation> {
     const now = new Date();
     const id = this.counters.donations++;
-    const donation: Donation = {
+    const donation = {
       id,
       ...donationData,
       createdAt: now,
-      updatedAt: now,
-    };
+    } as Donation;
     this.donations.set(id, donation);
     return donation;
   }
@@ -639,7 +617,6 @@ export class MemoryStorage implements IStorage {
     const updatedDonation: Donation = {
       ...existingDonation,
       ...donationData,
-      updatedAt: new Date(),
     };
     this.donations.set(id, updatedDonation);
     return updatedDonation;
@@ -652,7 +629,7 @@ export class MemoryStorage implements IStorage {
   // Event operations
   async getEvents(): Promise<Event[]> {
     return Array.from(this.events.values()).sort((a, b) => 
-      b.createdAt.getTime() - a.createdAt.getTime()
+      (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0)
     );
   }
 
@@ -717,18 +694,17 @@ export class MemoryStorage implements IStorage {
       result = result.filter(v => v.devoteeId === devoteeId);
     }
     
-    return result.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    return result.sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
   }
 
   async createVolunteering(volunteeringData: InsertVolunteering): Promise<Volunteering> {
     const now = new Date();
     const id = this.counters.volunteering++;
-    const volunteering: Volunteering = {
+    const volunteering = {
       id,
       ...volunteeringData,
       createdAt: now,
-      updatedAt: now,
-    };
+    } as Volunteering;
     this.volunteering.set(id, volunteering);
     return volunteering;
   }
@@ -741,7 +717,6 @@ export class MemoryStorage implements IStorage {
     const updatedVolunteering: Volunteering = {
       ...existingVolunteering,
       ...volunteeringData,
-      updatedAt: new Date(),
     };
     this.volunteering.set(id, updatedVolunteering);
     return updatedVolunteering;
@@ -754,7 +729,7 @@ export class MemoryStorage implements IStorage {
   // Group operations
   async getGroups(): Promise<Group[]> {
     return Array.from(this.groups.values()).sort((a, b) => 
-      b.createdAt.getTime() - a.createdAt.getTime()
+      (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0)
     );
   }
 
@@ -812,7 +787,7 @@ export class MemoryStorage implements IStorage {
       result = result.filter(ge => ge.groupId === groupId);
     }
     
-    return result.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    return result.sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
   }
 
   async createGroupEntry(entryData: InsertGroupEntry): Promise<GroupEntry> {
@@ -820,7 +795,11 @@ export class MemoryStorage implements IStorage {
     const id = this.counters.groupEntries++;
     const entry: GroupEntry = {
       id,
-      ...entryData,
+      groupId: entryData.groupId,
+      entryData: entryData.entryData,
+      uniqueMemberId: entryData.uniqueMemberId ?? null,
+      qrIdentifier: entryData.qrIdentifier ?? null,
+      isActive: entryData.isActive ?? true,
       createdAt: now,
       updatedAt: now,
     };
@@ -849,7 +828,7 @@ export class MemoryStorage implements IStorage {
   // Mandal operations
   async getMandals(): Promise<Mandal[]> {
     return Array.from(this.mandals.values()).sort((a, b) => 
-      b.createdAt.getTime() - a.createdAt.getTime()
+      (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0)
     );
   }
 
@@ -860,7 +839,6 @@ export class MemoryStorage implements IStorage {
       id,
       ...mandalData,
       createdAt: now,
-      updatedAt: now,
     };
     this.mandals.set(id, mandal);
     return mandal;
@@ -869,7 +847,7 @@ export class MemoryStorage implements IStorage {
   // Sabha location operations
   async getSabhaLocations(): Promise<SabhaLocation[]> {
     return Array.from(this.sabhaLocations.values()).sort((a, b) => 
-      b.createdAt.getTime() - a.createdAt.getTime()
+      (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0)
     );
   }
 
@@ -880,7 +858,6 @@ export class MemoryStorage implements IStorage {
       id,
       ...locationData,
       createdAt: now,
-      updatedAt: now,
     };
     this.sabhaLocations.set(id, location);
     return location;
@@ -890,7 +867,7 @@ export class MemoryStorage implements IStorage {
   async getDashboardLayouts(userId: string): Promise<DashboardLayout[]> {
     return Array.from(this.dashboardLayouts.values())
       .filter(layout => layout.userId === userId)
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      .sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
   }
 
   async createDashboardLayout(layoutData: InsertDashboardLayout): Promise<DashboardLayout> {
@@ -941,19 +918,20 @@ export class MemoryStorage implements IStorage {
   }
 
   // Notification operations
-  getNotifications(userId?: string): Notification[] {
-    const all = Array.from(this.notifications.values()).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-    return userId ? all.filter(n => n.userId === userId || n.userId === "dev-user-1") : all;
+  async getNotifications(userId: string): Promise<Notification[]> {
+    const all = Array.from(this.notifications.values())
+      .sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
+    return all.filter(n => n.userId === userId || n.userId === "dev-user-1");
   }
 
-  createNotification(data: Omit<Notification, 'id' | 'createdAt'>): Notification {
+  async createNotification(data: InsertNotification): Promise<Notification> {
     const id = this.counters.notifications++;
-    const notification: Notification = { isPinned: false, ...data, id, createdAt: new Date() };
+    const notification: Notification = { isPinned: false, isRead: false, ...data, id, createdAt: new Date() };
     this.notifications.set(id, notification);
     return notification;
   }
 
-  markNotificationRead(id: number): Notification | undefined {
+  async markNotificationRead(id: number): Promise<Notification | undefined> {
     const n = this.notifications.get(id);
     if (!n) return undefined;
     const updated = { ...n, isRead: true };
@@ -961,7 +939,7 @@ export class MemoryStorage implements IStorage {
     return updated;
   }
 
-  markAllNotificationsRead(userId: string): void {
+  async markAllNotificationsRead(userId: string): Promise<void> {
     this.notifications.forEach((n, id) => {
       if (n.userId === userId || n.userId === "dev-user-1") {
         this.notifications.set(id, { ...n, isRead: true });
@@ -969,11 +947,11 @@ export class MemoryStorage implements IStorage {
     });
   }
 
-  deleteNotification(id: number): boolean {
+  async deleteNotification(id: number): Promise<boolean> {
     return this.notifications.delete(id);
   }
 
-  pinNotification(id: number): Notification | undefined {
+  async pinNotification(id: number): Promise<Notification | undefined> {
     const n = this.notifications.get(id);
     if (!n) return undefined;
     const updated = { ...n, isPinned: true };
@@ -981,7 +959,7 @@ export class MemoryStorage implements IStorage {
     return updated;
   }
 
-  unpinNotification(id: number): Notification | undefined {
+  async unpinNotification(id: number): Promise<Notification | undefined> {
     const n = this.notifications.get(id);
     if (!n) return undefined;
     const updated = { ...n, isPinned: false };
@@ -990,11 +968,11 @@ export class MemoryStorage implements IStorage {
   }
 
   // Document operations
-  getDocuments(devoteeId: number): DevoteeDocument[] {
+  async getDocuments(devoteeId: number): Promise<DevoteeDocument[]> {
     return this.documentStore.get(devoteeId) || [];
   }
 
-  addDocument(devoteeId: number, doc: Omit<DevoteeDocument, 'id' | 'devoteeId' | 'uploadedAt'>): DevoteeDocument {
+  async addDocument(devoteeId: number, doc: { type: string; filename: string; base64: string }): Promise<DevoteeDocument> {
     const existing = this.documentStore.get(devoteeId) || [];
     const newDoc: DevoteeDocument = {
       ...doc,
@@ -1006,12 +984,27 @@ export class MemoryStorage implements IStorage {
     return newDoc;
   }
 
-  deleteDocument(devoteeId: number, docId: string): boolean {
+  async deleteDocument(devoteeId: number, docId: string): Promise<boolean> {
     const existing = this.documentStore.get(devoteeId) || [];
     const filtered = existing.filter(d => d.id !== docId);
     if (filtered.length === existing.length) return false;
     this.documentStore.set(devoteeId, filtered);
     return true;
+  }
+
+  // Audit log operations (in-memory fallback - stores last 500 entries)
+  private auditLogStore: AuditLog[] = [];
+  private auditLogCounter = 1;
+
+  async createAuditLog(log: InsertAuditLog): Promise<AuditLog> {
+    const entry: AuditLog = { ...log, id: this.auditLogCounter++, createdAt: new Date() };
+    this.auditLogStore.unshift(entry);
+    if (this.auditLogStore.length > 500) this.auditLogStore.pop();
+    return entry;
+  }
+
+  async getAuditLogs(limit = 100): Promise<AuditLog[]> {
+    return this.auditLogStore.slice(0, limit);
   }
 
   // User listing (for admin/manager views)

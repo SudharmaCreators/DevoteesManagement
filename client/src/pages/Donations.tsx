@@ -336,7 +336,7 @@ export default function Donations() {
                 </DialogTitle>
               </div>
             </DialogHeader>
-            <div id="receipt-print-area" className="border border-border rounded-lg overflow-hidden">
+            <div id="donation-receipt-print-root" className="border border-border rounded-lg overflow-hidden">
               {/* Receipt header */}
               <div className="bg-gradient-to-r from-primary to-secondary p-5 text-white text-center">
                 <div className="text-xl font-bold">Madhav Parivar</div>
@@ -412,23 +412,13 @@ export default function Donations() {
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setReceiptDonation(null)}>Close</Button>
               <Button
-                onClick={() => {
-                  const area = document.getElementById("receipt-print-area");
-                  if (!area) return;
-                  const win = window.open("", "_blank", "width=620,height=750");
-                  if (!win) return;
-                  const styles = Array.from(document.styleSheets)
-                    .map(s => { try { return Array.from(s.cssRules).map(r => r.cssText).join("\n"); } catch { return ""; } })
-                    .join("\n");
-                  win.document.write(`<!DOCTYPE html><html><head><title>Donation Receipt</title><style>${styles}\nbody{background:#fff;padding:24px;font-family:sans-serif;}</style></head><body>${area.innerHTML}</body></html>`);
-                  win.document.close();
-                  win.addEventListener("load", () => { win.focus(); win.print(); });
-                }}
+                onClick={() => window.print()}
                 className="bg-primary text-primary-foreground"
               >
                 <Printer className="w-4 h-4 mr-2" /> Print Receipt
               </Button>
             </div>
+            <style>{`@media print { body > *:not(#donation-receipt-print-root) { display: none !important; } #donation-receipt-print-root { display: block !important; } }`}</style>
           </DialogContent>
         </Dialog>
       )}

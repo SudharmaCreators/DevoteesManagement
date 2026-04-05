@@ -17,14 +17,14 @@ interface GroupEntriesListProps {
 export function GroupEntriesList({ group, onClose }: GroupEntriesListProps) {
   const [searchTerm, setSearchTerm] = useState("");
 
-  const { data: entries, isLoading } = useQuery({
+  const { data: entries = [], isLoading } = useQuery<GroupEntry[]>({
     queryKey: ["/api/group-entries", group.id],
   });
 
   const customFields = (group.customFields as any[]) || [];
   const visibleFields = customFields.slice(0, 5); // Show first 5 fields in table
 
-  const filteredEntries = entries?.filter((entry: GroupEntry) => {
+  const filteredEntries = entries.filter((entry: GroupEntry) => {
     const entryData = entry.entryData as any;
     return Object.values(entryData).some(value => 
       String(value).toLowerCase().includes(searchTerm.toLowerCase())

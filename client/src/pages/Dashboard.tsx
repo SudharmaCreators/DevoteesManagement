@@ -13,17 +13,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Users, Building, Heart, Calendar, MessageSquare, Send } from "lucide-react";
+import type { Group } from "@shared/schema";
+
+interface StatsData {
+  totalDevotees: number;
+  activeFamilies: number;
+  totalDonations: number;
+  avgAttendance: number;
+}
 
 export default function Dashboard() {
   const { toast } = useToast();
   const [bulkMessageGroup, setBulkMessageGroup] = useState<any>(null);
   const [bulkMessage, setBulkMessage] = useState("");
 
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const { data: stats, isLoading: statsLoading } = useQuery<StatsData>({
     queryKey: ["/api/stats"],
   });
 
-  const { data: groups } = useQuery({
+  const { data: groups = [] } = useQuery<Group[]>({
     queryKey: ["/api/groups"],
   });
 

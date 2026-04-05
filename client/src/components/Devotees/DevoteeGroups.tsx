@@ -12,7 +12,7 @@ import { GroupEntryForm } from "./GroupEntryForm";
 import { GroupEntriesList } from "./GroupEntriesList";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Group } from "@shared/schema";
+import { Group, Mandal, SabhaLocation } from "@shared/schema";
 
 export function DevoteeGroups() {
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
@@ -28,11 +28,11 @@ export function DevoteeGroups() {
     queryKey: ["/api/groups"],
   });
 
-  const { data: mandals = [] } = useQuery<unknown[]>({
+  const { data: mandals = [] } = useQuery<Mandal[]>({
     queryKey: ["/api/mandals"],
   });
 
-  const { data: sabhaLocations = [] } = useQuery<unknown[]>({
+  const { data: sabhaLocations = [] } = useQuery<SabhaLocation[]>({
     queryKey: ["/api/sabha-locations"],
   });
 
