@@ -41,3 +41,4 @@ outputType = "webview"
 [agent]
 integrations = ["javascript_log_in_with_replit:1.0.0"]
 expertMode = true
+stack = "FULLSTACK_JS"
